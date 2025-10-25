@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id              String           @id @default(cuid())
+  businessName    String
+  email           String           @unique
+  password        String
+  billingAccounts BillingAccount[]
+  products        Product[]
+  bills           Bill[]
+  createdAt       DateTime         @default(now())
+}
+
+model BillingAccount {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      String   @default("CASHIER")
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  bills     Bill[]
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id                String     @id @default(cuid())
+  name              String
+  sku               String?
+  category          String?
+  price             Float
+  quantityInStock   Int
+  lowStockThreshold Int        @default(5)
+  adminId           String
+  admin             Admin      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  billItems         BillItem[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Bill {
+  id               String         @id @default(cuid())
+  billNumber       Int            @default(autoincrement())
+  customerName     String
+  billType         String         // INVENTORY or CUSTOM
+  totalAmount      Float
+  billingAccountId String
+  billingAccount   BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  adminId          String
+  admin            Admin          @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  items            BillItem[]
+  createdAt        DateTime       @default(now())
+}
+
+model BillItem {
+  id         String   @id @default(cuid())
+  billId     String
+  bill       Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name       String
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+}

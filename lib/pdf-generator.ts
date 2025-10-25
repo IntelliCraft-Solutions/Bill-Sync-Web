@@ -1,0 +1,231 @@
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+
+interface BillData {
+  billNumber: number
+  customerName: string
+  createdAt: Date
+  totalAmount: number
+  items: Array<{
+    name: string
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+  }>
+  businessName: string
+  cashierName: string
+}
+
+export function generateBillPDF(bill: BillData) {
+  const doc = new jsPDF({
+    unit: 'mm',
+    format: [80, 297] // Thermal printer width (80mm)
+  })
+
+  let yPos = 10
+
+  // ============ HEADER ============
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text(bill.businessName.toUpperCase(), 40, yPos, { align: 'center' })
+  yPos += 7
+
+  // Decorative line
+  doc.setLineWidth(0.5)
+  doc.line(10, yPos, 70, yPos)
+  yPos += 5
+
+  // Invoice title
+  doc.setFontSize(12)
+  doc.text('TAX INVOICE', 40, yPos, { align: 'center' })
+  yPos += 8
+
+  // ============ BILL DETAILS ============
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  
+  // Bill number and date
+  doc.text(`Bill No: ${bill.billNumber}`, 10, yPos)
+  yPos += 5
+  
+  const date = new Date(bill.createdAt)
+  const formattedDate = date.toLocaleDateString('en-IN', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric' 
+  })
+  const formattedTime = date.toLocaleTimeString('en-IN', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  })
+  doc.text(`Date: ${formattedDate} ${formattedTime}`, 10, yPos)
+  yPos += 5
+  
+  doc.text(`Customer: ${bill.customerName}`, 10, yPos)
+  yPos += 5
+  
+  doc.text(`Cashier: ${bill.cashierName}`, 10, yPos)
+  yPos += 7
+
+  // Separator line
+  doc.setLineWidth(0.3)
+  doc.line(10, yPos, 70, yPos)
+  yPos += 5
+
+  // ============ ITEMS TABLE ============
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  
+  // Table header
+  doc.text('ITEM', 10, yPos)
+  doc.text('QTY', 45, yPos, { align: 'right' })
+  doc.text('PRICE', 55, yPos, { align: 'right' })
+  doc.text('TOTAL', 70, yPos, { align: 'right' })
+  yPos += 4
+
+  // Separator
+  doc.setLineWidth(0.2)
+  doc.line(10, yPos, 70, yPos)
+  yPos += 4
+
+  // Table rows
+  doc.setFont('helvetica', 'normal')
+  bill.items.forEach((item) => {
+    // Item name (with wrapping if too long)
+    const itemName = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name
+    doc.text(itemName, 10, yPos)
+    doc.text(item.quantity.toString(), 45, yPos, { align: 'right' })
+    doc.text(`₹${item.unitPrice.toFixed(2)}`, 55, yPos, { align: 'right' })
+    doc.text(`₹${item.totalPrice.toFixed(2)}`, 70, yPos, { align: 'right' })
+    yPos += 5
+  })
+
+  yPos += 2
+
+  // Separator line
+  doc.setLineWidth(0.3)
+  doc.line(10, yPos, 70, yPos)
+  yPos += 5
+
+  // ============ TOTALS ============
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  
+  // Subtotal
+  doc.text('SUBTOTAL:', 10, yPos)
+  doc.text(`₹${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
+  yPos += 6
+
+  // Tax (if applicable - you can add tax calculation here)
+  // doc.text('GST (18%):', 10, yPos)
+  // doc.text(`₹${(bill.totalAmount * 0.18).toFixed(2)}`, 70, yPos, { align: 'right' })
+  // yPos += 6
+
+  // Grand Total
+  doc.setFontSize(12)
+  doc.text('GRAND TOTAL:', 10, yPos)
+  doc.text(`₹${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
+  yPos += 8
+
+  // Double line
+  doc.setLineWidth(0.5)
+  doc.line(10, yPos, 70, yPos)
+  yPos += 1
+  doc.line(10, yPos, 70, yPos)
+  yPos += 8
+
+  // ============ FOOTER ============
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Thank you for your business!', 40, yPos, { align: 'center' })
+  yPos += 5
+  
+  doc.text('Please visit again', 40, yPos, { align: 'center' })
+  yPos += 8
+
+  // QR Code placeholder or barcode
+  doc.setFontSize(7)
+  doc.text(`Bill ID: ${bill.billNumber}`, 40, yPos, { align: 'center' })
+  yPos += 5
+
+  // Terms
+  doc.setFontSize(6)
+  doc.text('Terms & Conditions:', 10, yPos)
+  yPos += 3
+  doc.text('1. Goods once sold cannot be returned', 10, yPos)
+  yPos += 3
+  doc.text('2. Subject to local jurisdiction', 10, yPos)
+
+  return doc
+}
+
+export function generateInventoryPDF(products: any[], businessName: string) {
+  const doc = new jsPDF()
+
+  doc.setFontSize(18)
+  doc.text(`${businessName} - Inventory Report`, 105, 20, { align: 'center' })
+  
+  doc.setFontSize(10)
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 30, { align: 'center' })
+
+  autoTable(doc, {
+    startY: 40,
+    head: [['Product', 'SKU', 'Category', 'Price', 'Stock', 'Status']],
+    body: products.map((product) => [
+      product.name,
+      product.sku || '-',
+      product.category || '-',
+      `₹${product.price.toFixed(2)}`,
+      product.quantityInStock.toString(),
+      product.quantityInStock <= product.lowStockThreshold ? 'Low Stock' : 'In Stock',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [14, 165, 233] },
+  })
+
+  return doc
+}
+
+export function generateSalesReportPDF(
+  data: any,
+  businessName: string,
+  startDate: string,
+  endDate: string
+) {
+  const doc = new jsPDF()
+
+  doc.setFontSize(18)
+  doc.text(`${businessName} - Sales Report`, 105, 20, { align: 'center' })
+  
+  doc.setFontSize(10)
+  doc.text(`Period: ${startDate} to ${endDate}`, 105, 30, { align: 'center' })
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 37, { align: 'center' })
+
+  // Summary
+  doc.setFontSize(12)
+  doc.text('Summary', 20, 50)
+  doc.setFontSize(10)
+  doc.text(`Total Revenue: ₹${data.totalRevenue.toFixed(2)}`, 20, 58)
+  doc.text(`Total Bills: ${data.totalBills}`, 20, 65)
+  doc.text(`Average Bill Value: ₹${data.averageBillValue.toFixed(2)}`, 20, 72)
+
+  // Bills table
+  if (data.bills && data.bills.length > 0) {
+    autoTable(doc, {
+      startY: 85,
+      head: [['Bill #', 'Date', 'Customer', 'Cashier', 'Amount']],
+      body: data.bills.map((bill: any) => [
+        bill.billNumber.toString(),
+        new Date(bill.createdAt).toLocaleDateString(),
+        bill.customerName,
+        bill.billingAccount?.username || '-',
+        `₹${bill.totalAmount.toFixed(2)}`,
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+    })
+  }
+
+  return doc
+}
