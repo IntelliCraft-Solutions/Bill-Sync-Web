@@ -15,6 +15,7 @@ model Admin {
   billingAccounts BillingAccount[]
   products        Product[]
   bills           Bill[]
+  storeDetails    StoreDetails?
   createdAt       DateTime         @default(now())
 }
 
@@ -37,6 +38,7 @@ model Product {
   price             Float
   quantityInStock   Int
   lowStockThreshold Int        @default(5)
+  imageUrl          String?
   adminId           String
   admin             Admin      @relation(fields: [adminId], references: [id], onDelete: Cascade)
   billItems         BillItem[]
@@ -68,4 +70,20 @@ model BillItem {
   quantity   Int
   unitPrice  Float
   totalPrice Float
+}
+
+model StoreDetails {
+  id         String   @id @default(cuid())
+  storeName  String
+  address    String?
+  phone      String?
+  email      String?
+  gstNumber  String?
+  website    String?
+  logo       String?
+  footerText String?  @default("Thank you for shopping!")
+  adminId    String   @unique
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

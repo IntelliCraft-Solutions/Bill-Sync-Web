@@ -14,6 +14,14 @@ interface BillData {
   }>
   businessName: string
   cashierName: string
+  storeDetails?: {
+    storeName: string
+    address?: string
+    phone?: string
+    email?: string
+    gstNumber?: string
+    footerText?: string
+  }
 }
 
 export function generateBillPDF(bill: BillData) {
@@ -25,11 +33,43 @@ export function generateBillPDF(bill: BillData) {
   let yPos = 10
 
   // ============ HEADER ============
+  const storeName = bill.storeDetails?.storeName || bill.businessName
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text(bill.businessName.toUpperCase(), 40, yPos, { align: 'center' })
+  doc.text(storeName.toUpperCase(), 40, yPos, { align: 'center' })
   yPos += 7
 
+  // Store address and contact
+  if (bill.storeDetails) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    
+    if (bill.storeDetails.address) {
+      const addressLines = doc.splitTextToSize(bill.storeDetails.address, 60)
+      addressLines.forEach((line: string) => {
+        doc.text(line, 40, yPos, { align: 'center' })
+        yPos += 4
+      })
+    }
+    
+    if (bill.storeDetails.phone) {
+      doc.text(`Tel: ${bill.storeDetails.phone}`, 40, yPos, { align: 'center' })
+      yPos += 4
+    }
+    
+    if (bill.storeDetails.email) {
+      doc.text(bill.storeDetails.email, 40, yPos, { align: 'center' })
+      yPos += 4
+    }
+    
+    if (bill.storeDetails.gstNumber) {
+      doc.setFont('helvetica', 'bold')
+      doc.text(`GST: ${bill.storeDetails.gstNumber}`, 40, yPos, { align: 'center' })
+      yPos += 4
+    }
+  }
+
+  yPos += 2
   // Decorative line
   doc.setLineWidth(0.5)
   doc.line(10, yPos, 70, yPos)
@@ -37,6 +77,7 @@ export function generateBillPDF(bill: BillData) {
 
   // Invoice title
   doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
   doc.text('TAX INVOICE', 40, yPos, { align: 'center' })
   yPos += 8
 
@@ -63,9 +104,6 @@ export function generateBillPDF(bill: BillData) {
   yPos += 5
   
   doc.text(`Customer: ${bill.customerName}`, 10, yPos)
-  yPos += 5
-  
-  doc.text(`Cashier: ${bill.cashierName}`, 10, yPos)
   yPos += 7
 
   // Separator line
@@ -79,7 +117,7 @@ export function generateBillPDF(bill: BillData) {
   
   // Table header
   doc.text('ITEM', 10, yPos)
-  doc.text('QTY', 45, yPos, { align: 'right' })
+  doc.text('QTY', 42, yPos, { align: 'center' })
   doc.text('PRICE', 55, yPos, { align: 'right' })
   doc.text('TOTAL', 70, yPos, { align: 'right' })
   yPos += 4
@@ -93,11 +131,11 @@ export function generateBillPDF(bill: BillData) {
   doc.setFont('helvetica', 'normal')
   bill.items.forEach((item) => {
     // Item name (with wrapping if too long)
-    const itemName = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name
+    const itemName = item.name.length > 18 ? item.name.substring(0, 18) + '...' : item.name
     doc.text(itemName, 10, yPos)
-    doc.text(item.quantity.toString(), 45, yPos, { align: 'right' })
-    doc.text(`₹${item.unitPrice.toFixed(2)}`, 55, yPos, { align: 'right' })
-    doc.text(`₹${item.totalPrice.toFixed(2)}`, 70, yPos, { align: 'right' })
+    doc.text(item.quantity.toString(), 42, yPos, { align: 'center' })
+    doc.text(item.unitPrice.toFixed(2), 55, yPos, { align: 'right' })
+    doc.text(item.totalPrice.toFixed(2), 70, yPos, { align: 'right' })
     yPos += 5
   })
 
@@ -114,18 +152,13 @@ export function generateBillPDF(bill: BillData) {
   
   // Subtotal
   doc.text('SUBTOTAL:', 10, yPos)
-  doc.text(`₹${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
+  doc.text(`₹ ${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
   yPos += 6
-
-  // Tax (if applicable - you can add tax calculation here)
-  // doc.text('GST (18%):', 10, yPos)
-  // doc.text(`₹${(bill.totalAmount * 0.18).toFixed(2)}`, 70, yPos, { align: 'right' })
-  // yPos += 6
 
   // Grand Total
   doc.setFontSize(12)
   doc.text('GRAND TOTAL:', 10, yPos)
-  doc.text(`₹${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
+  doc.text(`₹ ${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
   yPos += 8
 
   // Double line
@@ -141,6 +174,9 @@ export function generateBillPDF(bill: BillData) {
   doc.text('Thank you for your business!', 40, yPos, { align: 'center' })
   yPos += 5
   
+  const footerText = bill.storeDetails?.footerText || 'Thank you for shopping!'
+  doc.text(footerText, 40, yPos, { align: 'center' })
+  yPos += 4
   doc.text('Please visit again', 40, yPos, { align: 'center' })
   yPos += 8
 

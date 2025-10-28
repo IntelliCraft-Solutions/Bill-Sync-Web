@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { Plus, Trash2, UserCircle } from 'lucide-react'
+import { Plus, Trash2, UserCircle, Search } from 'lucide-react'
 
 interface Employee {
   id: string
@@ -15,8 +15,10 @@ interface Employee {
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [search, setSearch] = useState('')
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -27,11 +29,23 @@ export default function EmployeesPage() {
     fetchEmployees()
   }, [])
 
+  useEffect(() => {
+    if (search.trim() === '') {
+      setFilteredEmployees(employees)
+    } else {
+      const filtered = employees.filter(emp =>
+        emp.username.toLowerCase().includes(search.toLowerCase())
+      )
+      setFilteredEmployees(filtered)
+    }
+  }, [search, employees])
+
   const fetchEmployees = async () => {
     try {
       const response = await fetch('/api/employees')
       const data = await response.json()
       setEmployees(data)
+      setFilteredEmployees(data)
     } catch (error) {
       console.error('Failed to fetch employees:', error)
     } finally {
@@ -93,6 +107,18 @@ export default function EmployeesPage() {
           </button>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search employees by username..."
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+        </div>
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Cashier Accounts</h2>
@@ -122,14 +148,14 @@ export default function EmployeesPage() {
                       Loading...
                     </td>
                   </tr>
-                ) : employees.length === 0 ? (
+                ) : filteredEmployees.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      No employees yet. Add your first cashier!
+                      {search ? 'No employees found matching your search.' : 'No employees yet. Add your first cashier!'}
                     </td>
                   </tr>
                 ) : (
-                  employees.map((employee) => (
+                  filteredEmployees.map((employee) => (
                     <tr key={employee.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">

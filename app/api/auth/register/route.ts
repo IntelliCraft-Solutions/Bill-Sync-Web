@@ -32,6 +32,11 @@ export async function POST(req: NextRequest) {
         businessName,
         email,
         password: hashedPassword,
+        storeDetails: {
+          create: {
+            storeName: businessName,
+          }
+        }
       },
     })
 

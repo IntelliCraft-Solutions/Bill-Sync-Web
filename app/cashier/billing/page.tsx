@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { Plus, Trash2, Download, Printer } from 'lucide-react'
+import { Plus, Trash2, Download, Printer, Package } from 'lucide-react'
 import { generateBillPDF } from '@/lib/pdf-generator'
-import { generateBillPDFA4 } from '@/lib/pdf-generator-a4'
 import { useSession } from 'next-auth/react'
+import Image from 'next/image'
 
 interface Product {
   id: string
   name: string
   price: number
   quantityInStock: number
+  imageUrl?: string
 }
 
 interface BillItem {
@@ -29,9 +30,9 @@ export default function BillingPage() {
   const [items, setItems] = useState<BillItem[]>([])
   const [customerName, setCustomerName] = useState('')
   const [loading, setLoading] = useState(false)
-  const [printFormat, setPrintFormat] = useState<'thermal' | 'a4'>('thermal')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [generatedBill, setGeneratedBill] = useState<any>(null)
+  const [storeDetails, setStoreDetails] = useState<any>(null)
   
   // Custom item form
   const [customName, setCustomName] = useState('')
@@ -43,6 +44,25 @@ export default function BillingPage() {
       fetchProducts()
     }
   }, [billType])
+
+  useEffect(() => {
+    fetchStoreDetails()
+  }, [])
+
+  const fetchStoreDetails = async () => {
+    try {
+      const response = await fetch('/api/store-info')
+      if (response.ok) {
+        const data = await response.json()
+        setStoreDetails(data.storeDetails)
+        console.log('Store details fetched:', data.storeDetails)
+      } else {
+        console.error('Failed to fetch store details:', response.status)
+      }
+    } catch (error) {
+      console.error('Failed to fetch store details:', error)
+    }
+  }
 
   const fetchProducts = async () => {
     try {
@@ -130,12 +150,15 @@ export default function BillingPage() {
       if (response.ok) {
         const bill = await response.json()
         
-        // Store bill data for modal
+        // Store bill data for modal with store details
         const billData = {
           ...bill,
-          businessName: session?.user?.name || 'Your Business',
-          cashierName: session?.user?.name || 'Cashier'
+          businessName: storeDetails?.storeName || 'Your Business',
+          storeDetails: storeDetails
         }
+        
+        console.log('Bill data being saved:', billData)
+        console.log('Store details:', storeDetails)
         
         setGeneratedBill(billData)
         setShowSuccessModal(true)
@@ -154,19 +177,14 @@ export default function BillingPage() {
   const handleDownloadPDF = () => {
     if (!generatedBill) return
     
-    const doc = printFormat === 'thermal' 
-      ? generateBillPDF(generatedBill)
-      : generateBillPDFA4(generatedBill)
-    
+    const doc = generateBillPDF(generatedBill)
     doc.save(`Bill-${generatedBill.billNumber}.pdf`)
   }
 
   const handlePrintPDF = () => {
     if (!generatedBill) return
     
-    const doc = printFormat === 'thermal' 
-      ? generateBillPDF(generatedBill)
-      : generateBillPDFA4(generatedBill)
+    const doc = generateBillPDF(generatedBill)
     
     // Open in new window for printing
     const pdfBlob = doc.output('blob')
@@ -216,48 +234,16 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Customer Name and Print Format */}
+        {/* Customer Name */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Enter customer name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Printer className="w-4 h-4 inline mr-2" />
-                Print Format
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPrintFormat('thermal')}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-                    printFormat === 'thermal'
-                      ? 'bg-primary-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Thermal (80mm)
-                </button>
-                <button
-                  onClick={() => setPrintFormat('a4')}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-                    printFormat === 'a4'
-                      ? 'bg-primary-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  A4 Paper
-                </button>
-              </div>
-            </div>
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
+          <input
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            placeholder="Enter customer name"
+          />
         </div>
 
         {/* Add Items */}
@@ -271,9 +257,27 @@ export default function BillingPage() {
                   onClick={() => addInventoryItem(product)}
                   className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-left"
                 >
-                  <h3 className="font-medium text-gray-900">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">₹{product.price.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Stock: {product.quantityInStock}</p>
+                  <div className="flex items-start gap-3">
+                    {product.imageUrl ? (
+                      <div className="relative h-16 w-16 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+                        <Image
+                          src={product.imageUrl}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Package className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 truncate">{product.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">₹{product.price.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500 mt-1">Stock: {product.quantityInStock}</p>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>

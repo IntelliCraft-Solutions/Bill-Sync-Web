@@ -4,6 +4,7 @@
 ✅ Dependencies installed (`npm i` - Done!)  
 ✅ Prisma client generated  
 ✅ TypeScript configured  
+✅ **AUTOMATION ENABLED** - Everything runs automatically!
 ❌ `.env` file missing (THIS IS WHY IT'S NOT WORKING)
 
 ## Quick Fix (2 Minutes)
@@ -44,24 +45,56 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="auto-generated-by-setup-script"
 ```
 
-### Step 4: Initialize Database
-```bash
-npm run db:push
-```
-
-You should see:
-```
-✔ Database synchronized
-✔ Generated Prisma Client
-```
-
-### Step 5: Start App
+### Step 4: Start App (Everything Else is Automatic!)
 ```bash
 npm run dev
 ```
 
-### Step 6: Open Browser
+**NEW!** This command now automatically:
+- ✅ Creates `public/uploads` directory
+- ✅ Generates Prisma Client
+- ✅ Syncs database schema
+- ✅ Starts development server
+
+You should see:
+```
+🚀 Running pre-development setup...
+📁 Creating uploads directory...
+✅ Created: public/uploads
+🔧 Generating Prisma Client...
+✅ Prisma Client generated
+🗄️  Syncing database schema...
+✅ Database schema synced
+✨ Pre-development setup complete!
+🚀 Starting development server...
+```
+
+### Step 5: Open Browser
 http://localhost:3000
+
+---
+
+## 🤖 NEW: Automation Features
+
+Your project now has **automatic setup**! No more manual steps.
+
+### What Runs Automatically
+When you run `npm run dev`:
+1. ✅ Creates `public/uploads` folder (for product images)
+2. ✅ Generates Prisma Client (TypeScript types)
+3. ✅ Syncs database schema (applies changes)
+4. ✅ Starts development server
+
+### What This Means
+- ❌ No more `mkdir public\uploads`
+- ❌ No more `npx prisma generate`
+- ❌ No more `npx prisma db push`
+- ✅ Just run `npm run dev` and everything works!
+
+### Documentation
+- **`AUTOMATION_COMPLETE.md`** - Full automation guide
+- **`README_AUTOMATION.md`** - Detailed documentation
+- **`scripts/pre-dev.js`** - The automation script
 
 ## First Time Use
 
@@ -119,21 +152,22 @@ Then update the values!
 ## TL;DR (Too Long, Didn't Read)
 
 ```bash
-# Run this:
+# 1. Create .env file:
 setup.bat
 
-# Get free database:
+# 2. Get free database from:
 # https://supabase.com
 
-# Update .env with database URL
+# 3. Update .env with database URL
 
-# Then run:
-npm run db:push
+# 4. Start app (everything else is automatic!):
 npm run dev
 
-# Open:
+# 5. Open browser:
 # http://localhost:3000
 ```
+
+**NEW:** No more manual `npx prisma` commands! Everything runs automatically.
 
 ## Project Structure Quick Reference
 

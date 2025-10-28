@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { Plus, Edit, Trash2, Search, AlertTriangle } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, AlertTriangle, Upload, Loader2, Package } from 'lucide-react'
+import Image from 'next/image'
 
 interface Product {
   id: string
@@ -12,6 +13,7 @@ interface Product {
   price: number
   quantityInStock: number
   lowStockThreshold: number
+  imageUrl?: string
 }
 
 export default function InventoryPage() {
@@ -20,6 +22,7 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -27,6 +30,7 @@ export default function InventoryPage() {
     price: '',
     quantityInStock: '',
     lowStockThreshold: '5',
+    imageUrl: '',
   })
 
   useEffect(() => {
@@ -45,6 +49,35 @@ export default function InventoryPage() {
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    const uploadFormData = new FormData()
+    uploadFormData.append('file', file)
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setFormData(prev => ({ ...prev, imageUrl: data.url }))
+        alert('Image uploaded successfully')
+      } else {
+        alert('Failed to upload image')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload image')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -55,6 +88,7 @@ export default function InventoryPage() {
       price: parseFloat(formData.price),
       quantityInStock: parseInt(formData.quantityInStock),
       lowStockThreshold: parseInt(formData.lowStockThreshold),
+      imageUrl: formData.imageUrl || undefined,
     }
 
     try {
@@ -97,6 +131,7 @@ export default function InventoryPage() {
         price: product.price.toString(),
         quantityInStock: product.quantityInStock.toString(),
         lowStockThreshold: product.lowStockThreshold.toString(),
+        imageUrl: product.imageUrl || '',
       })
     } else {
       setEditingProduct(null)
@@ -107,6 +142,7 @@ export default function InventoryPage() {
         price: '',
         quantityInStock: '',
         lowStockThreshold: '5',
+        imageUrl: '',
       })
     }
     setShowModal(true)
@@ -175,7 +211,23 @@ export default function InventoryPage() {
                   products.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">{product.name}</div>
+                        <div className="flex items-center gap-3">
+                          {product.imageUrl ? (
+                            <div className="relative h-12 w-12 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+                              <Image
+                                src={product.imageUrl}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
+                              <Package className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="font-medium text-gray-900">{product.name}</div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {product.sku || '-'}
@@ -241,6 +293,49 @@ export default function InventoryPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                <div className="flex items-center gap-4">
+                  {formData.imageUrl && (
+                    <div className="relative h-20 w-20 rounded-lg border-2 border-gray-200 overflow-hidden">
+                      <Image
+                        src={formData.imageUrl}
+                        alt="Product"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      id="productImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('productImage')?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Upload Image
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>

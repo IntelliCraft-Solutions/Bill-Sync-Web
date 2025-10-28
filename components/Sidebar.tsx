@@ -12,7 +12,8 @@ import {
   LogOut,
   Receipt,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -31,6 +32,7 @@ export default function Sidebar({ role, businessName }: SidebarProps) {
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/admin/employees', label: 'Employees', icon: Users },
     { href: '/admin/reports', label: 'Reports', icon: FileText },
+    { href: '/admin/settings', label: 'Settings', icon: Settings },
   ]
 
   const cashierLinks = [
