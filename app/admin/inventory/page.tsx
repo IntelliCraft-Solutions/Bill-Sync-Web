@@ -23,6 +23,7 @@ export default function InventoryPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string>('')
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -36,6 +37,16 @@ export default function InventoryPage() {
   useEffect(() => {
     fetchProducts()
   }, [search])
+
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('')
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
 
   const fetchProducts = async () => {
     try {
@@ -80,6 +91,7 @@ export default function InventoryPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('') // Clear previous errors
     
     const payload = {
       name: formData.name,
@@ -104,9 +116,14 @@ export default function InventoryPage() {
       if (response.ok) {
         fetchProducts()
         closeModal()
+      } else {
+        // Handle error response
+        const data = await response.json()
+        setError(data.error || 'Failed to save product')
       }
     } catch (error) {
       console.error('Failed to save product:', error)
+      setError('Failed to save product. Please try again.')
     }
   }
 
@@ -122,6 +139,7 @@ export default function InventoryPage() {
   }
 
   const openModal = (product?: Product) => {
+    setError('') // Clear any previous errors
     if (product) {
       setEditingProduct(product)
       setFormData({
@@ -151,6 +169,7 @@ export default function InventoryPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingProduct(null)
+    setError('')
   }
 
   return (
@@ -279,11 +298,17 @@ export default function InventoryPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              {editingProduct ? 'Edit Product' : 'Add Product'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] flex flex-col">
+            <div className="overflow-y-auto flex-1 p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {editingProduct ? 'Edit Product' : 'Add Product'}
+              </h2>
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+              <form id="productForm" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
                 <input
@@ -386,7 +411,10 @@ export default function InventoryPage() {
                   required
                 />
               </div>
-              <div className="flex gap-3 pt-4">
+              </form>
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-white sticky bottom-0 rounded-b-xl">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={closeModal}
@@ -396,12 +424,13 @@ export default function InventoryPage() {
                 </button>
                 <button
                   type="submit"
+                  form="productForm"
                   className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                 >
                   {editingProduct ? 'Update' : 'Add'} Product
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
