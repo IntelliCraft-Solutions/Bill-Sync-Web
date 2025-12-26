@@ -5,60 +5,60 @@ import { motion } from 'framer-motion';
 import { Check, Zap } from 'lucide-react';
 
 export function Pricing() {
-  const plans = [
-    {
-      name: 'Standard',
-      price: '0',
-      description: 'Perfect for small shops starting their digital journey.',
-      features: [
-        'Up to 50 products',
-        'Up to 100 bills/month',
-        '1 admin account',
-        '3 cashier accounts',
-        'Basic sales reports',
-        'Email support'
-      ],
-      cta: 'Get Started',
-      href: '/auth/register?plan=STANDARD',
-      popular: false
-    },
-    {
-      name: 'Professional',
-      price: '1,499',
-      description: 'Advanced tools for growing retail businesses.',
-      features: [
-        'Unlimited products',
-        'Unlimited bills',
-        'Up to 5 admin accounts',
-        'Up to 20 cashier accounts',
-        'Advanced analytics',
-        'Priority support',
-        'Custom branding',
-        '1GB cloud storage'
-      ],
-      cta: 'Start Free Trial',
-      href: '/auth/register?plan=PROFESSIONAL',
-      popular: true
-    },
-    {
-      name: 'Premium',
-      price: '2,999',
-      description: 'Enterprise features for large scale operations.',
-      features: [
-        'Everything in Professional',
-        'Unlimited admin accounts',
-        'Unlimited cashier accounts',
-        'API access',
-        'White-label option',
-        'Dedicated account manager',
-        'Custom integrations',
-        '10GB cloud storage'
-      ],
-      cta: 'Start Free Trial',
-      href: '/auth/register?plan=PREMIUM',
-      popular: false
-    }
-  ];
+    const plans = [
+      {
+        name: 'Standard',
+        price: '0',
+        description: 'Perfect for small shops starting their digital journey.',
+        features: [
+          'Up to 20 products',
+          'Up to 10 bills/month',
+          '1 admin account',
+          '3 cashier accounts',
+          'Basic sales reports',
+          'Email support'
+        ],
+        cta: 'Start Free Trial',
+        href: '/auth/register?plan=STANDARD',
+        popular: false
+      },
+      {
+        name: 'Professional',
+        price: '1,499',
+        description: 'Advanced tools for growing retail businesses.',
+        features: [
+          'Unlimited products',
+          'Unlimited bills',
+          'Up to 5 admin accounts',
+          'Up to 20 cashier accounts',
+          'Advanced analytics',
+          'Priority support',
+          'Custom branding',
+          '1GB cloud storage'
+        ],
+        cta: 'Get Started',
+        href: '/auth/register?plan=PROFESSIONAL',
+        popular: true
+      },
+      {
+        name: 'Premium',
+        price: '2,999',
+        description: 'Enterprise features for large scale operations.',
+        features: [
+          'Everything in Professional',
+          'Unlimited admin accounts',
+          'Unlimited cashier accounts',
+          'API access',
+          'White-label option',
+          'Dedicated account manager',
+          'Custom integrations',
+          '10GB cloud storage'
+        ],
+        cta: 'Get Started',
+        href: '/auth/register?plan=PREMIUM',
+        popular: false
+      }
+    ];
 
   return (
     <section id="pricing" className="py-24 bg-[#0f0f1a] relative">

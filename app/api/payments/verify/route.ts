@@ -21,8 +21,8 @@ export async function POST(req: Request) {
 
       if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
 
-      // Update user subscription
-      await prisma.user.update({
+      // Update admin subscription
+      await prisma.admin.update({
         where: { id: userId },
         data: {
           subscription: {

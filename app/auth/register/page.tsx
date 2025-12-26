@@ -13,11 +13,13 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -43,21 +45,23 @@ export default function Register() {
       if (!response.ok) {
         setError(data.error || 'Registration failed')
       } else {
-        // Auto-login after registration
-        const result = await signIn('credentials', {
-          email,
-          password,
-          userType: 'admin',
-          redirect: false,
-        })
+        setSuccess(data.message || 'Account created successfully!')
+        
+        // Wait a bit to show success message before logging in
+        setTimeout(async () => {
+          const result = await signIn('credentials', {
+            email,
+            password,
+            userType: 'admin',
+            redirect: false,
+          })
 
-        if (result?.error) {
-          // If auto-login fails, redirect to signin
-          router.push('/auth/signin')
-        } else {
-          // Success! Redirect to admin dashboard
-          router.push('/admin/dashboard')
-        }
+          if (result?.error) {
+            router.push('/auth/signin')
+          } else {
+            router.push('/admin/dashboard')
+          }
+        }, 2000)
       }
     } catch (err) {
       setError('An error occurred. Please try again.')
@@ -161,11 +165,18 @@ export default function Register() {
             </div>
           </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {success}
+              </div>
+            )}
+
 
           <button
             type="submit"

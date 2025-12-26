@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { checkUsageLimit, incrementUsage } from '@/lib/usage-tracker'
 
 const billItemSchema = z.object({
   productId: z.string().optional(),
@@ -76,6 +77,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const adminId = session.user.adminId!;
+
+    // Check usage limit
+    const usageCheck = await checkUsageLimit(adminId, 'BILLS');
+    if (usageCheck.exceeded) {
+      return NextResponse.json(
+        { error: usageCheck.message },
+        { status: 403 }
+      )
+    }
+
     const body = await req.json()
     const data = billSchema.parse(body)
 
@@ -88,7 +100,7 @@ export async function POST(req: NextRequest) {
           billType: data.billType,
           totalAmount: data.totalAmount,
           billingAccountId: session.user.id,
-          adminId: session.user.adminId!,
+          adminId: adminId,
           items: {
             create: data.items.map((item) => ({
               productId: item.productId,
@@ -122,6 +134,9 @@ export async function POST(req: NextRequest) {
 
       return newBill
     })
+
+    // Increment usage
+    await incrementUsage(adminId, 'BILLS');
 
     return NextResponse.json(bill)
   } catch (error) {

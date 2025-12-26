@@ -1,7 +1,7 @@
 export const PLAN_LIMITS = {
   STANDARD: {
-    products: 50,
-    billsPerMonth: 100,
+    products: 20,
+    billsPerMonth: 10,
     adminAccounts: 1,
     cashierAccounts: 3,
     storageMB: 100,

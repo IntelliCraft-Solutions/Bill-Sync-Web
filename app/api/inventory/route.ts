@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { checkUsageLimit, incrementUsage } from '@/lib/usage-tracker'
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -60,6 +61,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const adminId = session.user.id;
+
+    // Check usage limit
+    const usageCheck = await checkUsageLimit(adminId, 'PRODUCTS');
+    if (usageCheck.exceeded) {
+      return NextResponse.json(
+        { error: usageCheck.message },
+        { status: 403 }
+      )
+    }
+
     const body = await req.json()
     const data = productSchema.parse(body)
 
@@ -67,7 +79,7 @@ export async function POST(req: NextRequest) {
     if (data.sku) {
       const existingProduct = await prisma.product.findFirst({
         where: {
-          adminId: session.user.id,
+          adminId: adminId,
           sku: data.sku,
         },
       })
@@ -83,9 +95,12 @@ export async function POST(req: NextRequest) {
     const product = await prisma.product.create({
       data: {
         ...data,
-        adminId: session.user.id,
+        adminId: adminId,
       },
     })
+
+    // Increment usage
+    await incrementUsage(adminId, 'PRODUCTS');
 
     return NextResponse.json(product)
   } catch (error) {
