@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Store, User, Lock, Mail } from 'lucide-react'
+import { Store, User, Lock, Mail, ArrowLeft, Home } from 'lucide-react'
 
 export default function SignIn() {
   const router = useRouter()
@@ -44,7 +44,14 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 relative">
+      <Link 
+        href="/" 
+        className="absolute top-8 left-8 flex items-center gap-2 text-gray-600 hover:text-primary-500 transition-colors font-medium bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border border-gray-200"
+      >
+        <Home className="w-4 h-4" />
+        <span>Back to Home</span>
+      </Link>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-500 rounded-full mb-4">
