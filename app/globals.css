@@ -24,6 +24,12 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better touch handling for mobile */
+button, a, input, select, textarea {
+  touch-action: manipulation;
 }
 
 @layer utilities {

@@ -204,11 +204,11 @@ export default function BillingPage() {
 
   return (
     <DashboardLayout role="CASHIER">
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Create Bill</h1>
+      <div className="space-y-4 sm:space-y-6 pb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Create Bill</h1>
 
         {/* Bill Type Selection */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
           <label className="block text-sm font-medium text-gray-700 mb-3">Bill Type</label>
           <div className="flex gap-4">
             <button
@@ -235,7 +235,7 @@ export default function BillingPage() {
         </div>
 
         {/* Customer Name */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
           <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
           <input
             type="text"
@@ -248,18 +248,18 @@ export default function BillingPage() {
 
         {/* Add Items */}
         {billType === 'INVENTORY' ? (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Products</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {products.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addInventoryItem(product)}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-left"
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 active:bg-primary-100 transition-all text-left touch-manipulation min-h-[100px] sm:min-h-[auto]"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                     {product.imageUrl ? (
-                      <div className="relative h-16 w-16 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+                      <div className="relative h-20 w-20 sm:h-16 sm:w-16 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0 mx-auto sm:mx-0">
                         <Image
                           src={product.imageUrl}
                           alt={product.name}
@@ -268,13 +268,13 @@ export default function BillingPage() {
                         />
                       </div>
                     ) : (
-                      <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <Package className="h-8 w-8 text-gray-400" />
+                      <div className="h-20 w-20 sm:h-16 sm:w-16 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
+                        <Package className="h-10 w-10 sm:h-8 sm:w-8 text-gray-400" />
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
                       <h3 className="font-medium text-gray-900 truncate">{product.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">₹{product.price.toFixed(2)}</p>
+                      <p className="text-base sm:text-sm font-semibold text-primary-600 mt-1">₹{product.price.toFixed(2)}</p>
                       <p className="text-xs text-gray-500 mt-1">Stock: {product.quantityInStock}</p>
                     </div>
                   </div>
@@ -283,9 +283,9 @@ export default function BillingPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Custom Item</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <input
                 type="text"
                 value={customName}
@@ -310,10 +310,10 @@ export default function BillingPage() {
               />
               <button
                 onClick={addCustomItem}
-                className="flex items-center justify-center gap-2 bg-primary-500 text-white px-4 py-3 rounded-lg hover:bg-primary-600 transition-colors"
+                className="flex items-center justify-center gap-2 bg-primary-500 text-white px-4 py-3 rounded-lg hover:bg-primary-600 transition-colors min-h-[48px] touch-manipulation"
               >
                 <Plus className="w-5 h-5" />
-                Add Item
+                <span className="whitespace-nowrap">Add Item</span>
               </button>
             </div>
           </div>
@@ -322,10 +322,11 @@ export default function BillingPage() {
         {/* Bill Items */}
         {items.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Bill Items</h2>
             </div>
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
@@ -380,6 +381,49 @@ export default function BillingPage() {
                 </tfoot>
               </table>
             </div>
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-gray-200">
+              {items.map((item, index) => (
+                <div key={index} className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
+                      <div className="mt-1 flex items-center gap-3 text-sm text-gray-600">
+                        <span>₹{item.unitPrice.toFixed(2)}</span>
+                        <span>•</span>
+                        <span>Qty: {item.quantity}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeItem(index)}
+                      className="ml-3 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-gray-600">Quantity:</label>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center"
+                      min="1"
+                    />
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Total:</span>
+                    <span className="font-bold text-lg text-gray-900">₹{item.totalPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="p-4 bg-gray-50 border-t-2 border-gray-300">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-900">Total Amount:</span>
+                  <span className="font-bold text-xl text-gray-900">₹{getTotalAmount().toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -388,7 +432,7 @@ export default function BillingPage() {
           <button
             onClick={handleSubmit}
             disabled={loading || !customerName}
-            className="w-full bg-primary-500 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-primary-500 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[56px] touch-manipulation shadow-lg"
           >
             {loading ? 'Creating Bill...' : 'Generate Bill'}
           </button>
@@ -397,8 +441,8 @@ export default function BillingPage() {
 
       {/* Success Modal */}
       {showSuccessModal && generatedBill && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[95vh] my-4 p-6 sm:p-8 shadow-2xl overflow-y-auto">
             <div className="text-center">
               {/* Success Icon */}
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">

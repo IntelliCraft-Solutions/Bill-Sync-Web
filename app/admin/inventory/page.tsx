@@ -176,7 +176,7 @@ export default function InventoryPage() {
     <DashboardLayout role="ADMIN">
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventory Management</h1>
           <button
             onClick={() => openModal()}
             className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors"
@@ -198,9 +198,10 @@ export default function InventoryPage() {
           />
         </div>
 
-        {/* Products Table */}
+        {/* Products - Desktop Table / Mobile Cards */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -292,17 +293,100 @@ export default function InventoryPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-gray-200">
+            {loading ? (
+              <div className="p-6 text-center text-gray-500">Loading...</div>
+            ) : products.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No products found. Add your first product!</div>
+            ) : (
+              products.map((product) => (
+                <div key={product.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-start gap-3 mb-3">
+                    {product.imageUrl ? (
+                      <div className="relative h-16 w-16 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+                        <Image
+                          src={product.imageUrl}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-16 w-16 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Package className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
+                      <div className="mt-1 flex flex-wrap gap-2 text-sm text-gray-600">
+                        {product.sku && <span>SKU: {product.sku}</span>}
+                        {product.category && <span>• {product.category}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <p className="text-xs text-gray-500">Price</p>
+                      <p className="text-sm font-semibold text-gray-900">₹{product.price.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Stock</p>
+                      <p className="text-sm font-semibold text-gray-900">{product.quantityInStock}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    {product.quantityInStock <= product.lowStockThreshold ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                        <AlertTriangle className="w-3 h-3" />
+                        Low Stock
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                        In Stock
+                      </span>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => openModal(product)}
+                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] flex flex-col">
-            <div className="overflow-y-auto flex-1 p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {editingProduct ? 'Edit Product' : 'Add Product'}
-              </h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[95vh] my-4 flex flex-col shadow-2xl">
+            <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  {editingProduct ? 'Edit Product' : 'Add Product'}
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-800">{error}</p>
@@ -413,7 +497,7 @@ export default function InventoryPage() {
               </div>
               </form>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-white sticky bottom-0 rounded-b-xl">
+            <div className="p-4 sm:p-6 border-t border-gray-200 bg-white sticky bottom-0 rounded-b-xl">
               <div className="flex gap-3">
                 <button
                   type="button"

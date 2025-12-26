@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { supabase, STORAGE_BUCKET } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,36 +31,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Convert file to buffer
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
 
     // Generate unique filename
     const timestamp = Date.now()
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const fileExt = originalName.split('.').pop() || 'jpg'
     const filename = `${timestamp}-${originalName}`
-    const filepath = join(uploadsDir, filename)
 
-    // Save file
-    await writeFile(filepath, buffer)
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filename, buffer, {
+        contentType: file.type,
+        upsert: false, // Don't overwrite existing files
+      })
 
-    // Return public URL
-    const publicUrl = `/uploads/${filename}`
+    if (error) {
+      console.error('Supabase upload error:', error)
+      return NextResponse.json(
+        { error: `Failed to upload file: ${error.message}` },
+        { status: 500 }
+      )
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filename)
+
+    const publicUrl = urlData.publicUrl
 
     return NextResponse.json({
       success: true,
       url: publicUrl,
       filename: filename
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload error:', error)
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: `Failed to upload file: ${error.message || 'Unknown error'}` },
       { status: 500 }
     )
   }

@@ -46,11 +46,11 @@ export default function CashierDashboard() {
 
   return (
     <DashboardLayout role="CASHIER">
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Cashier Dashboard</h1>
+      <div className="space-y-4 sm:space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Cashier Dashboard</h1>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
@@ -96,10 +96,11 @@ export default function CashierDashboard() {
 
         {/* Recent Bills */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Recent Bills</h2>
           </div>
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -142,6 +143,29 @@ export default function CashierDashboard() {
                 )}
               </tbody>
             </table>
+          </div>
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-gray-200">
+            {loading ? (
+              <div className="p-6 text-center text-gray-500">Loading...</div>
+            ) : bills.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No bills yet. Create your first bill!</div>
+            ) : (
+              bills.map((bill) => (
+                <div key={bill.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-900">#{bill.billNumber}</p>
+                      <p className="text-sm text-gray-600">{bill.customerName}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">₹{bill.totalAmount.toFixed(2)}</p>
+                      <p className="text-sm text-gray-500">{new Date(bill.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

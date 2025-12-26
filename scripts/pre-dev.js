@@ -1,20 +1,9 @@
 const { execSync } = require('child_process');
-const fs = require('fs');
 const path = require('path');
 
 console.log('🚀 Running pre-development setup...\n');
 
-// Step 1: Create uploads directory
-console.log('📁 Creating uploads directory...');
-const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('✅ Created: public/uploads\n');
-} else {
-  console.log('✅ Already exists: public/uploads\n');
-}
-
-// Step 2: Generate Prisma Client
+// Step 1: Generate Prisma Client
 console.log('🔧 Generating Prisma Client...');
 try {
   execSync('npx prisma generate', { 
@@ -34,7 +23,7 @@ try {
   }
 }
 
-// Step 3: Push database schema
+// Step 2: Push database schema
 console.log('🗄️  Syncing database schema...');
 try {
   execSync('npx prisma db push', { 
