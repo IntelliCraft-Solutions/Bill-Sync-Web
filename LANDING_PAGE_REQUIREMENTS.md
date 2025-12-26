@@ -570,26 +570,177 @@ model Admin {
 
 ### 7. UI/UX Requirements
 
-#### 7.1 Design System
-- Consistent color scheme
-- Modern, professional aesthetic
-- Responsive design (mobile-first)
-- Accessibility (WCAG 2.1 AA)
-- Dark mode (optional, future)
+#### 7.1 Design System - Dark Theme
 
-#### 7.2 Animations
-- Smooth page transitions
-- Scroll animations (fade-in, slide-up)
-- Hover effects
-- Loading states
-- Success/error feedback
+**Color Palette:**
+- **Primary Background**: `#0a0a0f` or `#0f0f1a` (deep dark blue-black)
+- **Secondary Background**: `#1a1a2e` (slightly lighter dark)
+- **Card Background**: `#16213e` or `#1e2746` (dark blue-gray cards)
+- **Accent Colors**:
+  - Primary: `#6366f1` (indigo) or `#8b5cf6` (purple)
+  - Secondary: `#06b6d4` (cyan) or `#3b82f6` (blue)
+  - Success: `#10b981` (green)
+  - Warning: `#f59e0b` (amber/yellow)
+  - Error: `#ef4444` (red)
+- **Text Colors**:
+  - Primary Text: `#ffffff` (white)
+  - Secondary Text: `#a1a1aa` (gray-400)
+  - Muted Text: `#71717a` (gray-500)
+- **Border Colors**: `#27272a` (gray-800) with subtle glow effects
+- **Gradient Overlays**: Purple-to-blue gradients (`#8b5cf6` → `#3b82f6`)
 
-#### 7.3 Performance
-- Image optimization (Next.js Image)
-- Code splitting
-- Lazy loading
-- SEO optimization
-- Fast page loads (< 3s)
+**Typography:**
+- **Primary Font**: Inter, system-ui, -apple-system (clean, modern sans-serif)
+- **Headings**: Bold, large (2.5rem - 4rem for hero)
+- **Body**: Regular weight, 16px base size
+- **Line Height**: 1.6-1.8 for readability
+- **Letter Spacing**: Slightly increased for headings (0.02em)
+
+**Card Design:**
+- Rounded corners: `12px` or `16px`
+- Subtle border: `1px solid rgba(255, 255, 255, 0.1)`
+- Background: Dark with slight transparency
+- Shadow: `0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)`
+- Hover: Subtle glow effect with accent color
+- Glass morphism effect: `backdrop-blur-sm` with semi-transparent background
+
+#### 7.2 Responsive Design & Mobile Optimization
+
+**Breakpoints:**
+- Mobile: `< 640px` (sm)
+- Tablet: `640px - 1024px` (md)
+- Desktop: `1024px - 1280px` (lg)
+- Large Desktop: `> 1280px` (xl)
+
+**Mobile-First Approach:**
+- All components must be fully functional on mobile
+- Touch-friendly buttons (min 44x44px)
+- Swipe gestures for carousels
+- Collapsible navigation menu
+- Stacked layouts on mobile
+- Optimized images for mobile bandwidth
+- Proper viewport meta tags
+- No horizontal scrolling
+
+**Orientation Support:**
+- Portrait: Optimized vertical layouts
+- Landscape: Adjusted spacing and layouts
+- Responsive images that adapt to orientation
+
+**Performance on Mobile:**
+- Lazy load images below the fold
+- Optimize animations for mobile GPUs
+- Reduce motion for users with motion sensitivity
+- Fast tap response (< 100ms)
+
+#### 7.3 Animations & Effects
+
+**Page Transitions:**
+- **Instant Navigation**: Use Next.js `<Link>` with `prefetch` for instant page loads
+- **No Full Page Reloads**: Client-side navigation only
+- **Smooth Transitions**: Fade-in effect (0.3s ease-in-out) between pages
+- **Loading States**: Skeleton loaders or subtle spinners
+
+**Scroll Animations (Reveal on Scroll):**
+- **Fade In**: Elements fade in as they enter viewport (opacity 0 → 1)
+- **Slide Up**: Elements slide up from bottom (translateY 30px → 0)
+- **Slide In Left/Right**: Alternating slide-in from sides
+- **Scale In**: Subtle scale effect (scale 0.95 → 1)
+- **Stagger Effect**: Multiple elements animate with delay (0.1s between each)
+- **Threshold**: Trigger at 20% visibility in viewport
+- **Use Libraries**: `framer-motion`, `react-intersection-observer`, or `AOS` (Animate On Scroll)
+
+**Continuous Animations (Always Running):**
+- **Floating Elements**: Subtle up-down motion (2-3px, 3-4s duration, infinite)
+- **Rotating Icons**: Slow rotation (360deg, 20-30s, infinite, linear)
+- **Gradient Shifts**: Animated gradient backgrounds (position shift, 5-10s, infinite)
+- **Particle Effects**: Subtle moving particles in background
+- **Glow Pulses**: Accent colors with pulsing glow effect (opacity 0.5 → 1, 2s, infinite)
+- **Background Patterns**: Subtle animated patterns or grids
+
+**Hover Effects:**
+- **Card Lift**: `translateY(-4px)` with increased shadow
+- **Scale**: Slight scale (1.02-1.05)
+- **Glow**: Border or shadow glow with accent color
+- **Color Shift**: Background or text color transition
+- **Icon Animation**: Icons rotate, scale, or change color
+
+**Interactive Elements:**
+- **Button Hover**: Scale + glow effect
+- **Button Active**: Slight scale down (0.98)
+- **Form Input Focus**: Border glow with accent color
+- **Smooth Transitions**: All hover effects use `transition: all 0.3s ease`
+
+**Performance Considerations:**
+- Use `transform` and `opacity` for animations (GPU accelerated)
+- Avoid animating `width`, `height`, `top`, `left` (causes reflow)
+- Use `will-change` sparingly and only for actively animating elements
+- Debounce scroll events
+- Use `requestAnimationFrame` for smooth animations
+- Reduce motion for users with `prefers-reduced-motion`
+
+#### 7.4 Component-Specific Animations
+
+**Hero Section:**
+- Background image with parallax or subtle zoom
+- Text fade-in with stagger
+- CTA buttons slide up with bounce
+- Floating icons around hero content
+- Gradient overlay animation
+
+**Feature Cards:**
+- Reveal on scroll (fade + slide up)
+- Hover: lift + glow
+- Icon animations on hover
+- Staggered entrance (delay between cards)
+
+**Testimonials Carousel:**
+- Smooth slide transitions (0.5s ease)
+- Auto-rotate every 5 seconds
+- Fade between testimonials
+- Pause on hover
+
+**Pricing Cards:**
+- Reveal with scale + fade
+- "Popular" badge pulse animation
+- Hover: lift + border glow
+- Feature list animate in on hover
+
+**FAQ Accordion:**
+- Smooth height transition (0.3s ease)
+- Icon rotation on expand
+- Content fade in
+
+**Navigation:**
+- Smooth scroll to sections
+- Active link highlight with underline animation
+- Mobile menu slide in from right
+- Sticky navbar with background blur on scroll
+
+#### 7.5 Performance Requirements
+
+**Page Load:**
+- First Contentful Paint: < 1.5s
+- Time to Interactive: < 3s
+- Largest Contentful Paint: < 2.5s
+- Cumulative Layout Shift: < 0.1
+
+**Optimization Techniques:**
+- **Image Optimization**: Next.js `Image` component with WebP format
+- **Code Splitting**: Dynamic imports for heavy components
+- **Lazy Loading**: Components and images below the fold
+- **Font Optimization**: Self-hosted fonts with `font-display: swap`
+- **CSS Optimization**: Purge unused Tailwind classes
+- **Bundle Size**: Keep main bundle < 200KB (gzipped)
+- **API Calls**: Debounce and cache where appropriate
+
+**SEO Optimization:**
+- Proper meta tags (title, description, OG tags)
+- Semantic HTML structure
+- Schema.org markup for business/product
+- Sitemap.xml
+- robots.txt
+- Fast server-side rendering
 
 ---
 
@@ -765,6 +916,121 @@ DEMO_ADMIN_PASSWORD=...
 5. Typography choices
 6. Testimonial photos (placeholders initially)
 7. Partner/brand logos (placeholders initially)
+
+---
+
+## 🎬 Animation Implementation Details
+
+### Recommended Libraries
+
+**Primary Animation Library:**
+- **Framer Motion** (`framer-motion`): Best for React animations, scroll animations, and page transitions
+- **React Intersection Observer** (`react-intersection-observer`): For scroll-triggered animations
+
+**Alternative:**
+- **AOS (Animate On Scroll)**: Simpler, but less flexible
+- **GSAP**: More powerful, but heavier
+
+### Animation Patterns
+
+**Scroll Reveal Pattern (using Framer Motion):**
+```typescript
+import { motion } from 'framer-motion'
+import { useInView } from 'react-intersection-observer'
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 30 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, ease: "easeOut" }
+}
+
+// Usage
+const { ref, inView } = useInView({ threshold: 0.2, triggerOnce: true })
+<motion.div ref={ref} initial="initial" animate={inView ? "animate" : "initial"} variants={fadeInUp}>
+  Content
+</motion.div>
+```
+
+**Stagger Animation Pattern:**
+```typescript
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+}
+```
+
+**Continuous Animation Pattern:**
+```typescript
+const floating = {
+  y: [0, -10, 0],
+  transition: {
+    duration: 3,
+    repeat: Infinity,
+    ease: "easeInOut"
+  }
+}
+```
+
+### Performance Best Practices
+
+1. **Use CSS transforms** instead of changing layout properties
+2. **Debounce scroll listeners** (use `useDebounce` or `lodash.debounce`)
+3. **Lazy load animations** - only animate elements in viewport
+4. **Use `will-change` sparingly** - only for actively animating elements
+5. **Respect `prefers-reduced-motion`**:
+   ```css
+   @media (prefers-reduced-motion: reduce) {
+     * {
+       animation-duration: 0.01ms !important;
+       animation-iteration-count: 1 !important;
+       transition-duration: 0.01ms !important;
+     }
+   }
+   ```
+
+### Animation Timing
+
+- **Fast interactions**: 0.2s (hover, focus)
+- **Medium transitions**: 0.3-0.5s (page transitions, card reveals)
+- **Slow animations**: 2-4s (continuous floating, gradients)
+- **Easing**: Use `ease-out` for entrances, `ease-in` for exits, `ease-in-out` for continuous
+
+---
+
+## 📱 Mobile-Specific Considerations
+
+### Touch Interactions
+- **Swipe gestures**: Use `react-swipeable` or `swiper` for carousels
+- **Touch feedback**: Add `active:` states for buttons
+- **Pull to refresh**: Consider for mobile lists (optional)
+
+### Performance on Mobile
+- **Reduce animation complexity** on mobile devices
+- **Use `transform3d`** for GPU acceleration
+- **Limit continuous animations** to 1-2 per page
+- **Test on real devices**, not just emulators
+
+### Orientation Handling
+```typescript
+// Detect orientation changes
+useEffect(() => {
+  const handleOrientationChange = () => {
+    // Adjust layout
+  }
+  window.addEventListener('orientationchange', handleOrientationChange)
+  return () => window.removeEventListener('orientationchange', handleOrientationChange)
+}, [])
+```
 
 ---
 
