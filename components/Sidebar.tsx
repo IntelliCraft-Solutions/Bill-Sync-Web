@@ -13,7 +13,8 @@ import {
   Receipt,
   Menu,
   X,
-  Settings
+  Settings,
+  CreditCard
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -26,14 +27,16 @@ export default function Sidebar({ role, businessName }: SidebarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
-  const adminLinks = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/admin/inventory', label: 'Inventory', icon: Package },
-    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-    { href: '/admin/employees', label: 'Employees', icon: Users },
-    { href: '/admin/reports', label: 'Reports', icon: FileText },
-    { href: '/admin/settings', label: 'Settings', icon: Settings },
-  ]
+    const adminLinks = [
+      { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/admin/inventory', label: 'Inventory', icon: Package },
+      { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+      { href: '/admin/employees', label: 'Employees', icon: Users },
+      { href: '/admin/reports', label: 'Reports', icon: FileText },
+      { href: '/admin/settings/subscription', label: 'Subscription', icon: CreditCard },
+      { href: '/admin/settings', label: 'Settings', icon: Settings },
+    ]
+
 
   const cashierLinks = [
     { href: '/cashier/dashboard', label: 'Dashboard', icon: LayoutDashboard },

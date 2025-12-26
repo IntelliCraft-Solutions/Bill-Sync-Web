@@ -27,17 +27,36 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const admin = await prisma.admin.create({
-      data: {
-        businessName,
-        email,
-        password: hashedPassword,
-        storeDetails: {
-          create: {
-            storeName: businessName,
+    const admin = await prisma.$transaction(async (tx) => {
+      const newAdmin = await tx.admin.create({
+        data: {
+          businessName,
+          email,
+          password: hashedPassword,
+          storeDetails: {
+            create: {
+              storeName: businessName,
+            }
           }
-        }
-      },
+        },
+      })
+
+      const standardPlan = await tx.subscriptionPlan.findFirst({
+        where: { name: 'STANDARD' }
+      })
+
+      if (standardPlan) {
+        await tx.subscription.create({
+          data: {
+            adminId: newAdmin.id,
+            planId: standardPlan.id,
+            status: 'ACTIVE',
+            startDate: new Date(),
+          }
+        })
+      }
+
+      return newAdmin
     })
 
     return NextResponse.json({

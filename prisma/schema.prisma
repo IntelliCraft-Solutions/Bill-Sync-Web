@@ -17,6 +17,8 @@ model Admin {
   billingAccounts BillingAccount[]
   products        Product[]
   storeDetails    StoreDetails?
+  subscription    Subscription?
+  usageRecords    UsageRecord[]
 }
 
 model BillingAccount {
@@ -86,4 +88,73 @@ model StoreDetails {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  id          String   @id @default(cuid())
+  name        String   // "STANDARD", "PROFESSIONAL", "PREMIUM"
+  displayName String   // "Standard", "Professional", "Premium"
+  price       Float    // Monthly price in INR
+  currency    String   @default("INR")
+  features    Json     // Feature list as JSON
+  limits      Json     // Usage limits as JSON
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  adminId         String   @unique
+  planId          String
+  status          String   // "ACTIVE", "CANCELLED", "EXPIRED", "TRIAL"
+  startDate       DateTime @default(now())
+  endDate         DateTime?
+  trialEndDate    DateTime?
+  isTrial         Boolean  @default(false)
+  paymentMethod   String?  // "RAZORPAY", "STRIPE", etc.
+  paymentId       String?  // External payment ID
+  autoRenew       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  admin           Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id])
+  usageRecords    UsageRecord[]
+  payments        Payment[]
+}
+
+model UsageRecord {
+  id             String   @id @default(cuid())
+  adminId        String
+  subscriptionId String
+  metricType     String   // "PRODUCTS", "BILLS", "STORAGE", "USERS"
+  currentValue   Int      @default(0)
+  limitValue     Int      // Limit from plan
+  period         String   @default("MONTHLY") // "MONTHLY", "YEARLY"
+  periodStart    DateTime @default(now())
+  periodEnd      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  admin          Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  @@index([adminId, metricType, periodStart])
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  subscriptionId  String
+  amount          Float
+  currency        String   @default("INR")
+  status          String   // "PENDING", "SUCCESS", "FAILED", "REFUNDED"
+  paymentMethod   String
+  paymentId       String?  // External payment gateway ID
+  transactionId   String?  // Internal transaction ID
+  receiptUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  @@index([subscriptionId, status])
 }
