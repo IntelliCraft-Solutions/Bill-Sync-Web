@@ -2,6 +2,6 @@
   "projectId": "52f1d254-e4e2-4e38-bb5a-bff7a46f5b78",
   "createdAt": 1766775367105,
   "startupCommands": [
-    "node scripts/pre-dev.js && npx next dev"
+    "node scripts/pre-dev.js; npx next dev"
   ]
 }
