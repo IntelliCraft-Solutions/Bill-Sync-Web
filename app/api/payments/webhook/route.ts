@@ -385,39 +385,26 @@ export async function POST(req: NextRequest) {
             }
           })
         }).catch(async (error) => {
-          if (!rawResult || rawResult.length === 0) return null
-          
-          const subData = rawResult[0]
-          // Now fetch with proper Prisma includes for full data
-          return await prisma.subscription.findUnique({
-            where: { id: subData.id },
-            include: {
-              plan: true,
-              admin: {
-                select: {
-                  id: true,
-                  email: true,
-                  tenantId: true
+          console.error('[Webhook] Error in post-transaction check:', error)
+          // If the first query fails, try one more time with findFirst
+          try {
+            return await prisma.subscription.findFirst({
+              where: { id: updatedSubscriptionId },
+              include: {
+                plan: true,
+                admin: {
+                  select: {
+                    id: true,
+                    email: true,
+                    tenantId: true
+                  }
                 }
               }
-            }
-          })
-        }).catch(async (error) => {
-          console.error('[Webhook] Raw query failed, using standard query:', error)
-          // Fallback to standard query
-          return await prisma.subscription.findUnique({
-            where: { id: updatedSubscriptionId },
-            include: {
-              plan: true,
-              admin: {
-                select: {
-                  id: true,
-                  email: true,
-                  tenantId: true
-                }
-              }
-            }
-          })
+            })
+          } catch (retryError) {
+            console.error('[Webhook] Retry query also failed:', retryError)
+            return null
+          }
         })
         
         if (postTransactionCheck) {
