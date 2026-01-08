@@ -21,9 +21,9 @@ export async function GET(req: NextRequest) {
       // Handle features - could be array or object
       let features: string[] = []
       if (Array.isArray(plan.features)) {
-        features = plan.features
+        features = (plan.features as any[]).map(f => String(f))
       } else if (typeof plan.features === 'object' && plan.features !== null) {
-        features = Object.values(plan.features)
+        features = Object.values(plan.features).map(f => String(f))
       }
       
       // Handle limits

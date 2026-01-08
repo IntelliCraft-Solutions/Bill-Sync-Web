@@ -123,7 +123,9 @@ export async function GET(req: NextRequest) {
       where: { adminId }
     })
 
-    const limit = subscription.plan.limits?.products || 10
+    // Type cast limits JSON to access properties
+    const limits = subscription.plan.limits as any
+    const limit = limits?.products || 10
 
     return NextResponse.json({
       isFreePlan: true,
