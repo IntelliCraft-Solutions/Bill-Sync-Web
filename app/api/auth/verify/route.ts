@@ -68,6 +68,40 @@ export async function POST(req: NextRequest) {
       data: { emailVerified: true },
     })
 
+    // CRITICAL: Ensure Admin record exists for this tenant
+    // This ensures all verified users have Admin records even if password setup is skipped
+    let admin = await prisma.admin.findFirst({
+      where: { 
+        OR: [
+          { tenantId: user.tenant.id },
+          { email: user.email }
+        ]
+      },
+    })
+
+    if (!admin) {
+      // Create Admin record with empty password (will be set during password setup)
+      admin = await prisma.admin.create({
+        data: {
+          businessName: user.tenant.name,
+          email: user.email,
+          password: '', // Empty password - will be set during password setup
+          tenantId: user.tenant.id,
+        },
+      })
+      console.log(`[Verify] Created Admin ${admin.id} for tenant ${user.tenant.id} during email verification`)
+    } else if (!admin.tenantId) {
+      // Update existing admin to link to tenant
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: {
+          tenantId: user.tenant.id,
+          businessName: user.tenant.name,
+        },
+      })
+      console.log(`[Verify] Updated Admin ${admin.id} to link to tenant ${user.tenant.id}`)
+    }
+
     // Create tenant schema if not exists
     try {
       await createTenantSchema(user.tenant.id, user.tenant.schemaName)

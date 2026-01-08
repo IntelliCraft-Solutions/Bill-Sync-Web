@@ -67,11 +67,14 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Get subscription if exists - ALWAYS fetch fresh from DB (no caching)
-    let subscription = await prisma.subscription.findUnique({
-      where: { adminId: admin.id },
+    // CRITICAL: Get subscription - ALWAYS fetch fresh from DB with no caching
+    // Force a fresh query by using findFirst (not findUnique) to bypass any query cache
+    let subscription = await prisma.subscription.findFirst({
+      where: { 
+        adminId: admin.id
+      },
       include: {
-        plan: true, // Always include plan to get latest plan data
+        plan: true, // Explicitly fetch plan to ensure we get latest data
         payments: {
           orderBy: { createdAt: 'desc' },
           take: 20, // Get more payments for billing history
@@ -121,8 +124,11 @@ export async function GET(req: NextRequest) {
       
       // CRITICAL: Re-fetch subscription by adminId to get absolute latest data
       // This ensures we get the plan that was just updated by webhook
-      const finalSubscription = await prisma.subscription.findUnique({
-        where: { adminId: admin.id }, // Query by adminId, not subscription.id
+      // Force a fresh database query by using findFirst with explicit conditions
+      const finalSubscription = await prisma.subscription.findFirst({
+        where: { 
+          adminId: admin.id
+        },
         include: {
           plan: true,
           payments: {

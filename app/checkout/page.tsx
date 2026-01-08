@@ -182,8 +182,22 @@ export default function CheckoutPage() {
             const verifyData = await verifyRes.json()
             
             if (verifyData.status === 'SUCCESS') {
-          // Payment successful - webhook will handle subscription activation
-          router.push('/admin/settings/subscription?payment=success')
+              // Payment successful - verify-status endpoint will update subscription
+              // Also call sync endpoint as additional safety measure
+              try {
+                await fetch('/api/payments/sync-subscription', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    orderId: response.razorpay_order_id,
+                  }),
+                })
+              } catch (syncError) {
+                console.error('Sync subscription error (non-critical):', syncError)
+                // Don't block redirect, verify-status already handles it
+              }
+              // Payment successful - webhook will handle subscription activation
+              router.push('/admin/settings/subscription?payment=success')
             } else if (verifyData.status === 'PENDING') {
               // Payment pending - show error
               setError('Payment is pending. Your plan will be upgraded once payment is confirmed. If money was deducted, it will be automatically refunded if payment fails.')

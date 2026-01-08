@@ -4,14 +4,18 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
-import { Store, Mail, Lock, Building, Home } from 'lucide-react'
+import { Store, Mail, Lock, Building, Home, Eye, EyeOff } from 'lucide-react'
 
 export default function Register() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
-  const [step, setStep] = useState<'register' | 'verify'>('register')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [step, setStep] = useState<'register' | 'verify' | 'password'>('register')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -77,28 +81,89 @@ export default function Register() {
         return
       }
 
-      setSuccess('Email verified successfully! Logging you in...')
+      setSuccess('Email verified successfully! Please set your password.')
 
-      // Automatically sign in the user after successful verification
-      // Since OTP is already verified, we can sign in with just email
-      // The auth provider will check if user exists and is verified
+      // Move to password setup step instead of auto-login
+      setStep('password')
+      setLoading(false)
+    } catch (err) {
+      setError('An error occurred. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+
+    if (!password || !confirmPassword) {
+      setError('Password and confirm password are required')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to set password')
+        setLoading(false)
+        return
+      }
+
+      setSuccess('Account created successfully! Logging you in...')
+
+      // Sign in the user after password is set
       try {
-        const result = await signIn('credentials', {
+        const result = await signIn('legacy', {
           email,
-          otp: 'verified', // Special flag to indicate already verified
+          password,
+          userType: 'admin',
           redirect: false,
         })
 
         if (result?.error) {
-          setError('Failed to sign in. Please try logging in manually.')
+          console.error('Sign in error:', result.error)
+          // Show user-friendly error messages
+          let errorMessage = result.error
+          if (errorMessage.includes('FATAL') || errorMessage.includes('database') || errorMessage.includes('querying')) {
+            errorMessage = 'Database connection error. Please try again or contact support.'
+          } else if (errorMessage.includes('Invalid credentials')) {
+            errorMessage = 'Invalid email or password. Please try logging in manually.'
+          }
+          setError(`Account created but failed to sign in: ${errorMessage}`)
           setLoading(false)
         } else {
-          // Redirect to admin dashboard
-          router.push('/admin/dashboard')
+          // Successfully signed in - redirect to admin dashboard
+          setSuccess('Account created and signed in successfully! Redirecting...')
+          // Small delay to show success message
+          setTimeout(() => {
+            router.push('/admin/dashboard')
+            router.refresh() // Force refresh to ensure session is loaded
+          }, 1000)
         }
-      } catch (signInError) {
+      } catch (signInError: any) {
         console.error('Sign in error:', signInError)
-        setError('Account verified but failed to sign in. Please try logging in manually.')
+        const errorMessage = signInError.message || 'Unknown error'
+        setError(`Account created but failed to sign in: ${errorMessage}. Please try logging in manually.`)
         setLoading(false)
       }
     } catch (err) {
@@ -185,7 +250,7 @@ export default function Register() {
               {loading ? 'Sending verification code...' : 'Create Account'}
             </button>
           </form>
-        ) : (
+        ) : step === 'verify' ? (
           <form onSubmit={handleVerify} className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4">
               <p className="text-sm">
@@ -248,6 +313,101 @@ export default function Register() {
               className="w-full text-gray-600 py-2 text-sm hover:text-primary-500 transition-colors"
             >
               Change email address
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSetPassword} className="space-y-4">
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+              <p className="text-sm">
+                Email verified successfully! Please set your password to complete account setup.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Enter your password"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Password must be at least 6 characters long
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Confirm your password"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {success}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
         )}

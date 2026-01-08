@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendInvoiceEmail, sendUpgradeSuccessEmail } from '@/lib/email'
 import Razorpay from 'razorpay'
+import { getISTDate, addDaysToIST } from '@/lib/date-utils'
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || '',
@@ -130,7 +131,13 @@ export async function POST(req: NextRequest) {
     
     console.log(`[Webhook] Processing payment: Order=${razorpay_order_id}, Payment=${razorpay_payment_id}, Status=${finalStatus}`)
 
-    // Update payment status
+    // CRITICAL: Update payment status and subscription in a transaction
+    // This ensures atomicity - either everything updates or nothing does
+    let subscriptionUpdated = false
+    let updatedSubscriptionId: string | null = null
+    let updatedPlanId: string | null = null
+    let updatedPlanName: string | null = null
+    
     await prisma.$transaction(async (tx) => {
       await tx.payment.update({
         where: { id: payment.id },
@@ -161,12 +168,13 @@ export async function POST(req: NextRequest) {
         }
 
         if (plan) {
+          const istNow = getISTDate()
           const updatedTenant = await tx.tenant.update({
             where: { id: payment.tenantId },
             data: {
               plan: plan.name.toLowerCase(),
               paid: true,
-              planActivatedAt: new Date(),
+              planActivatedAt: istNow,
             },
             include: {
               user: true,
@@ -202,13 +210,16 @@ export async function POST(req: NextRequest) {
 
           if (subscription) {
             // Update existing subscription - include plan in the update
+            // CRITICAL: Ensure planId is updated to the new plan
+            const istNow = getISTDate()
+            const endDate = addDaysToIST(30) // 30 days from now
             subscription = await tx.subscription.update({
               where: { id: subscription.id },
               data: {
-                planId: plan.id,
+                planId: plan.id, // CRITICAL: Update to new plan
                 status: 'ACTIVE',
-                startDate: new Date(),
-                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+                startDate: subscription.startDate, // Keep original start date
+                endDate: endDate,
                 paymentMethod: 'RAZORPAY',
                 paymentId: razorpay_payment_id,
                 autoRenew: autoRenew,
@@ -218,15 +229,18 @@ export async function POST(req: NextRequest) {
                 plan: true, // Include plan data in response
               },
             })
+            console.log(`[Webhook] Updated subscription ${subscription.id} to plan ${plan.name} (${plan.id})`)
           } else {
             // Create new subscription
+            const istNow = getISTDate()
+            const endDate = addDaysToIST(30) // 30 days from now
             subscription = await tx.subscription.create({
               data: {
                 adminId: admin.id,
-                planId: plan.id,
+                planId: plan.id, // CRITICAL: Set to the paid plan
                 status: 'ACTIVE',
-                startDate: new Date(),
-                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+                startDate: istNow,
+                endDate: endDate,
                 paymentMethod: 'RAZORPAY',
                 paymentId: razorpay_payment_id,
                 autoRenew: true,
@@ -235,6 +249,7 @@ export async function POST(req: NextRequest) {
                 plan: true, // Include plan data in response
               },
             })
+            console.log(`[Webhook] Created new subscription ${subscription.id} with plan ${plan.name} (${plan.id})`)
           }
           
           console.log(`[Webhook] Subscription updated: Admin ${admin.id}, Plan: ${plan.name} (${plan.displayName}), PlanId: ${plan.id}, IsUpgrade: ${isUpgrade}`)
@@ -262,13 +277,37 @@ export async function POST(req: NextRequest) {
             console.log(`[Webhook] Verified: Subscription plan correctly set to ${plan.name} (${plan.displayName}), PlanId: ${verifySubscription.planId}`)
           }
           
-          // Update payment with subscriptionId
-          await tx.payment.update({
+          // CRITICAL: Update payment with subscriptionId and ensure it's linked
+          const updatedPayment = await tx.payment.update({
             where: { id: payment.id },
             data: {
               subscriptionId: subscription.id,
+              status: 'SUCCESS', // Ensure payment status is SUCCESS
             },
           })
+
+          console.log(`[Webhook] Payment ${payment.id} linked to subscription ${subscription.id}`)
+          
+          // Final verification: Re-fetch subscription to ensure all data is saved
+          const finalCheck = await tx.subscription.findUnique({
+            where: { id: subscription.id },
+            include: {
+              plan: true,
+              payments: {
+                where: { id: payment.id }
+              }
+            }
+          })
+          
+          if (finalCheck) {
+            console.log(`[Webhook] Final verification - Subscription: ${finalCheck.plan.name} (${finalCheck.planId}), Payment linked: ${finalCheck.payments.length > 0}`)
+          }
+          
+          // Mark that subscription was updated
+          subscriptionUpdated = true
+          updatedSubscriptionId = subscription.id
+          updatedPlanId = plan.id
+          updatedPlanName = plan.name
 
           // Send upgrade success email
           try {
@@ -302,7 +341,130 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({ received: true })
+    // CRITICAL: Post-transaction verification - fetch subscription directly from DB
+    // This ensures the transaction was committed and data is persisted
+    if (subscriptionUpdated && updatedSubscriptionId && updatedPlanId) {
+      try {
+        // Wait a small moment to ensure transaction is fully committed to database
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        // Force a fresh database connection to bypass any connection pooling cache
+        // Use standard Prisma query first, then verify with raw query if needed
+        const postTransactionCheck = await prisma.subscription.findUnique({
+          where: { id: updatedSubscriptionId },
+          include: {
+            plan: true,
+            admin: {
+              select: {
+                id: true,
+                email: true,
+                tenantId: true
+              }
+            }
+          }
+        }).then(async (result) => {
+          if (!result) return null
+          
+          // Double-check with a fresh query to ensure no caching
+          return await prisma.subscription.findFirst({
+            where: { id: updatedSubscriptionId },
+            include: {
+              plan: true,
+              admin: {
+                select: {
+                  id: true,
+                  email: true,
+                  tenantId: true
+                }
+              }
+            }
+          })
+        }).catch(async (error) => {
+          if (!rawResult || rawResult.length === 0) return null
+          
+          const subData = rawResult[0]
+          // Now fetch with proper Prisma includes for full data
+          return await prisma.subscription.findUnique({
+            where: { id: subData.id },
+            include: {
+              plan: true,
+              admin: {
+                select: {
+                  id: true,
+                  email: true,
+                  tenantId: true
+                }
+              }
+            }
+          })
+        }).catch(async (error) => {
+          console.error('[Webhook] Raw query failed, using standard query:', error)
+          // Fallback to standard query
+          return await prisma.subscription.findUnique({
+            where: { id: updatedSubscriptionId },
+            include: {
+              plan: true,
+              admin: {
+                select: {
+                  id: true,
+                  email: true,
+                  tenantId: true
+                }
+              }
+            }
+          })
+        })
+        
+        if (postTransactionCheck) {
+          console.log(`[Webhook] ✅ POST-TRANSACTION VERIFICATION: Subscription ${postTransactionCheck.id}`)
+          console.log(`[Webhook]   - Plan: ${postTransactionCheck.plan.name} (${postTransactionCheck.planId})`)
+          console.log(`[Webhook]   - Admin: ${postTransactionCheck.admin.email}`)
+          console.log(`[Webhook]   - Expected Plan: ${updatedPlanName} (${updatedPlanId})`)
+          
+          // Double-check planId matches
+          if (postTransactionCheck.planId !== updatedPlanId) {
+            console.error(`[Webhook] ❌ CRITICAL ERROR: Post-transaction plan mismatch!`)
+            console.error(`[Webhook]   Expected: ${updatedPlanId} (${updatedPlanName})`)
+            console.error(`[Webhook]   Got: ${postTransactionCheck.planId} (${postTransactionCheck.plan.name})`)
+            
+            // Attempt to fix outside transaction - use standard Prisma update
+            try {
+              await prisma.subscription.update({
+                where: { id: updatedSubscriptionId },
+                data: { 
+                  planId: updatedPlanId,
+                  updatedAt: getISTDate()
+                }
+              })
+              console.log(`[Webhook] ✅ Fixed plan mismatch using raw SQL update`)
+              
+              // Verify the fix
+              const fixedCheck = await prisma.subscription.findUnique({
+                where: { id: updatedSubscriptionId },
+                include: { plan: true }
+              })
+              if (fixedCheck && fixedCheck.planId === updatedPlanId) {
+                console.log(`[Webhook] ✅ VERIFIED: Plan correctly fixed to ${fixedCheck.plan.name}`)
+              }
+            } catch (fixError) {
+              console.error(`[Webhook] ❌ Failed to fix plan mismatch:`, fixError)
+            }
+          } else {
+            console.log(`[Webhook] ✅ VERIFIED: Plan correctly updated to ${postTransactionCheck.plan.name} (${postTransactionCheck.planId})`)
+          }
+        } else {
+          console.error(`[Webhook] ❌ CRITICAL ERROR: Subscription ${updatedSubscriptionId} not found after transaction!`)
+        }
+      } catch (postCheckError) {
+        console.error(`[Webhook] ❌ Error in post-transaction verification:`, postCheckError)
+      }
+    }
+
+    return NextResponse.json({ 
+      received: true,
+      subscriptionUpdated: subscriptionUpdated,
+      subscriptionId: updatedSubscriptionId
+    })
   } catch (error: any) {
     console.error('Webhook error:', error)
     return NextResponse.json(

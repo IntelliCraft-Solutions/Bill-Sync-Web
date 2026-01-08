@@ -88,39 +88,108 @@ export default function SubscriptionPage() {
     const paymentStatus = searchParams.get('payment')
     
     if (paymentStatus === 'success') {
-      // Force a complete refresh
-      fetchSubscriptionData().then(() => {
-        // Wait a bit longer to ensure webhook has processed
-        setTimeout(() => {
-          // Refresh again to get latest data
-          fetchSubscriptionData().then(() => {
-            setTimeout(() => {
-              // Check subscription state after refresh
-              fetch('/api/subscriptions?t=' + Date.now(), { cache: 'no-store' })
-                .then(res => res.json())
-                .then(subData => {
-                  console.log('[Payment Success] Latest subscription:', subData.plan?.name, subData.plan?.price)
-                  setSubscription(subData)
-                  if (subData.payments) {
-                    setPayments(subData.payments)
-                  }
-                  
-                  // Only show success if plan is a paid plan (not FREE_TRIAL)
-                  const isPaidPlan = subData.plan?.name !== 'FREE_TRIAL' && 
-                                     subData.plan?.price > 0
-                  
-                  if (isPaidPlan) {
-                    setShowSuccessBanner(true)
-                    // Remove query param from URL
-                    window.history.replaceState({}, '', '/admin/settings/subscription')
-                    // Hide success message after 5 seconds
-                    setTimeout(() => setShowSuccessBanner(false), 5000)
-                  }
-                })
-            }, 1000)
+      // CRITICAL: First, try to sync subscription in case webhook failed
+      // Get orderId from URL params if available, or from latest payment
+      const syncSubscription = async () => {
+        try {
+          // Try to get orderId from URL or fetch latest payment
+          const timestamp = Date.now()
+          const subRes = await fetch(`/api/subscriptions?t=${timestamp}`, {
+            cache: 'no-store',
           })
-        }, 2000) // Wait 2 seconds for webhook to process
-      })
+          if (subRes.ok) {
+            const subData = await subRes.json()
+            // Find latest SUCCESS payment without subscription
+            if (subData.payments && Array.isArray(subData.payments)) {
+              const latestSuccessPayment = subData.payments.find((p: any) => 
+                p.status === 'SUCCESS' && !p.subscriptionId
+              )
+              if (latestSuccessPayment && latestSuccessPayment.orderId) {
+                console.log('[Payment Success] Attempting to sync subscription for order:', latestSuccessPayment.orderId)
+                await fetch('/api/payments/sync-subscription', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    orderId: latestSuccessPayment.orderId,
+                  }),
+                })
+              }
+            }
+          }
+        } catch (syncError) {
+          console.error('[Payment Success] Sync error (non-critical):', syncError)
+        }
+      }
+      
+      // Call sync immediately
+      syncSubscription()
+      
+      // CRITICAL: Implement aggressive polling to catch webhook updates
+      // Webhook may take 1-5 seconds to process, so poll multiple times
+      let pollCount = 0
+      const maxPolls = 10 // Poll for up to 10 seconds
+      
+      const pollForUpdates = async () => {
+        pollCount++
+        console.log(`[Payment Success] Polling for updates (attempt ${pollCount}/${maxPolls})`)
+        
+        try {
+          const timestamp = Date.now()
+          const res = await fetch(`/api/subscriptions?t=${timestamp}&_=${timestamp + 1}&r=${timestamp + 2}`, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          })
+          
+          if (res.ok) {
+            const subData = await res.json()
+            console.log('[Payment Success] Subscription data:', {
+              planName: subData.plan?.name,
+              planId: subData.planId,
+              displayName: subData.plan?.displayName,
+              price: subData.plan?.price,
+              paymentsCount: subData.payments?.length || 0
+            })
+            
+            // Update state with fresh data
+            setSubscription({ ...subData })
+            if (subData.payments && Array.isArray(subData.payments)) {
+              setPayments([...subData.payments])
+            }
+            
+            // Check if plan has been upgraded (not FREE_TRIAL and price > 0)
+            const isPaidPlan = subData.plan?.name !== 'FREE_TRIAL' && subData.plan?.price > 0
+            
+            if (isPaidPlan) {
+              // Plan has been upgraded - show success and stop polling
+              setShowSuccessBanner(true)
+              window.history.replaceState({}, '', '/admin/settings/subscription')
+              setTimeout(() => setShowSuccessBanner(false), 5000)
+              return true // Stop polling
+            } else if (pollCount < maxPolls) {
+              // Plan not yet updated - continue polling
+              setTimeout(pollForUpdates, 1000)
+              return false
+            } else {
+              // Max polls reached, plan still not updated
+              console.warn('[Payment Success] Max polls reached, plan may not have updated yet')
+              return false
+            }
+          }
+        } catch (error) {
+          console.error('[Payment Success] Polling error:', error)
+          if (pollCount < maxPolls) {
+            setTimeout(pollForUpdates, 1000)
+          }
+        }
+        
+        return false
+      }
+      
+      // Start polling immediately
+      pollForUpdates()
     } else if (paymentStatus === 'pending' || paymentStatus === 'failed') {
       // Show error message for pending/failed payments
       setShowErrorBanner(true)

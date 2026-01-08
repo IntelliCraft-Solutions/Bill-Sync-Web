@@ -70,6 +70,16 @@ export const authOptions: NextAuthOptions = {
               throw new Error('Password not set. Please use email-based login or contact support to set a password.')
             }
 
+            // If admin has tenantId, ensure user is verified
+            if (admin.tenantId) {
+              const user = await prisma.user.findFirst({
+                where: { tenantId: admin.tenantId },
+              })
+              if (user && !user.emailVerified) {
+                throw new Error('Email not verified. Please verify your email first.')
+              }
+            }
+
             // Trim password input and compare
             const trimmedPassword = credentials.password.trim()
             if (!trimmedPassword) {
@@ -88,6 +98,7 @@ export const authOptions: NextAuthOptions = {
               email: admin.email,
               name: admin.businessName,
               role: 'ADMIN',
+              tenantId: admin.tenantId || undefined,
             }
           } catch (error: any) {
             // Handle database errors gracefully
