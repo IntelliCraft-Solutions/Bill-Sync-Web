@@ -69,7 +69,10 @@ export async function POST(req: NextRequest) {
     try {
       const razorpayPayment = await razorpay.payments.fetch(razorpay_payment_id)
       razorpayPaymentStatus = razorpayPayment.status
-      console.log(`[Webhook] Razorpay payment status: ${razorpayPaymentStatus}, Amount: ${razorpayPayment.amount / 100}`)
+      const paymentAmount = typeof razorpayPayment.amount === 'number' 
+        ? razorpayPayment.amount / 100 
+        : Number(razorpayPayment.amount) / 100
+      console.log(`[Webhook] Razorpay payment status: ${razorpayPaymentStatus}, Amount: ${paymentAmount}`)
     } catch (err) {
       console.error('[Webhook] Failed to fetch payment from Razorpay:', err)
       // Continue with status from webhook payload
@@ -162,8 +165,9 @@ export async function POST(req: NextRequest) {
         
         if (!plan) {
           // Fallback to price matching
+          const amountInRupees = typeof amount === 'number' ? amount / 100 : Number(amount) / 100
           plan = await tx.subscriptionPlan.findFirst({
-            where: { price: amount / 100 }, // Convert from paise
+            where: { price: amountInRupees }, // Convert from paise
           })
         }
 
@@ -311,12 +315,13 @@ export async function POST(req: NextRequest) {
 
           // Send upgrade success email
           try {
+            const amountInRupees = typeof amount === 'number' ? amount / 100 : Number(amount) / 100
             if (isUpgrade) {
               await sendUpgradeSuccessEmail(
                 updatedTenant.user.email,
                 updatedTenant.name,
                 plan.displayName,
-                amount / 100,
+                amountInRupees,
                 payment.currency,
                 razorpay_payment_id,
                 razorpay_order_id,
@@ -327,7 +332,7 @@ export async function POST(req: NextRequest) {
                 updatedTenant.user.email,
                 updatedTenant.name,
                 plan.displayName,
-                amount / 100,
+                amountInRupees,
                 payment.currency,
                 razorpay_payment_id,
                 razorpay_order_id
