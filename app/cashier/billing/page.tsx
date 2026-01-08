@@ -37,6 +37,8 @@ export default function BillingPage() {
   const [generatedBill, setGeneratedBill] = useState<any>(null)
   const [storeDetails, setStoreDetails] = useState<any>(null)
   const [paymentQRCode, setPaymentQRCode] = useState<string | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'CASH' | 'ONLINE' | null>(null)
+  const [showPaymentStep, setShowPaymentStep] = useState(false)
   
   // Custom item form
   const [customName, setCustomName] = useState('')
@@ -276,6 +278,64 @@ export default function BillingPage() {
     setShowSuccessModal(false)
     setGeneratedBill(null)
     setPaymentQRCode(null)
+    setSelectedPaymentMethod(null)
+    setShowPaymentStep(false)
+  }
+
+  const handlePaymentMethodSelect = async (method: 'CASH' | 'ONLINE') => {
+    setSelectedPaymentMethod(method)
+    if (method === 'ONLINE') {
+      // If ONLINE and QR code available, show payment step
+      if (paymentQRCode) {
+        setShowPaymentStep(true)
+      } else {
+        // If no QR code available, show error and don't proceed
+        showError('Online payment not configured. Please contact admin.')
+        setSelectedPaymentMethod(null)
+      }
+    } else {
+      // If CASH, mark as paid immediately and proceed to action buttons
+      setShowPaymentStep(false)
+      try {
+        const response = await fetch('/api/billing/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            billId: generatedBill.id,
+            paymentMethod: 'CASH',
+          }),
+        })
+        if (response.ok) {
+          setGeneratedBill({ ...generatedBill, paymentMethod: 'CASH', paymentStatus: 'PAID' })
+        }
+      } catch (error) {
+        console.error('Failed to update payment method:', error)
+      }
+    }
+  }
+
+  const handleMarkAsPaid = async () => {
+    try {
+      const response = await fetch('/api/billing/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billId: generatedBill.id,
+          paymentMethod: 'ONLINE',
+        }),
+      })
+      if (response.ok) {
+        showSuccess('Payment marked as received!')
+        // Update bill status
+        setGeneratedBill({ ...generatedBill, paymentStatus: 'PAID' })
+        // Close payment step and show action buttons
+        setShowPaymentStep(false)
+      } else {
+        showError('Failed to update payment status')
+      }
+    } catch (error) {
+      showError('Failed to update payment status')
+    }
   }
 
   return (
@@ -517,123 +577,224 @@ export default function BillingPage() {
 
       {/* Success Modal */}
       {showSuccessModal && generatedBill && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-[580px] p-6 sm:p-8 shadow-2xl" style={{ aspectRatio: '1', maxHeight: '90vh', overflowY: 'auto' }}>
-            {/* Success Icon and Title - Centered at top */}
-            <div className="text-center mb-6">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-3">
-                <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900">
-                Bill Created Successfully!
-              </h3>
-            </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-[500px] p-6 sm:p-8 shadow-2xl">
+            {/* Step 1: Payment Method Selection (if not selected yet) */}
+            {!selectedPaymentMethod && !showPaymentStep && (
+              <>
+                {/* Success Icon and Title */}
+                <div className="text-center mb-6">
+                  <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-green-100 mb-3">
+                    <svg className="h-7 w-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    Bill Created Successfully!
+                  </h3>
+                </div>
 
-            {/* Two Column Layout: Bill Info (Left) and QR Code (Right) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Left Column: Bill Info */}
-              <div className="flex flex-col justify-center">
-                <div className="bg-gray-50 rounded-lg p-5 text-left">
-                  <div className="space-y-4">
+                {/* Bill Details */}
+                <div className="bg-gray-50 rounded-lg p-5 mb-6">
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Bill Number</p>
-                      <p className="text-xl font-semibold text-gray-900">#{generatedBill.billNumber}</p>
+                      <p className="text-xs text-gray-600 mb-1">Bill Number</p>
+                      <p className="text-lg font-semibold text-gray-900">#{generatedBill.billNumber}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Customer</p>
-                      <p className="text-xl font-semibold text-gray-900">{generatedBill.customerName}</p>
+                      <p className="text-xs text-gray-600 mb-1">Customer</p>
+                      <p className="text-lg font-semibold text-gray-900">{generatedBill.customerName}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                      <p className="text-3xl font-bold text-primary-600">₹{generatedBill.totalAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                      <p className="text-2xl font-bold text-primary-600">₹{generatedBill.totalAmount.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Column: Payment QR Code */}
-              {paymentQRCode && (
-                <div className="flex flex-col justify-center">
-                  <div className="p-4 bg-white border-2 border-primary-200 rounded-lg">
-                    <p className="text-sm font-medium text-gray-700 mb-3 text-center">Scan to Pay Online</p>
-                    <div className="flex justify-center mb-3">
-                      <div className="relative w-48 h-48 border-2 border-gray-200 rounded-lg overflow-hidden">
-                        <Image
-                          src={paymentQRCode}
-                          alt="Payment QR Code"
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
+                {/* Payment Method Selection */}
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-gray-700 mb-3 text-center">Select Payment Method</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handlePaymentMethodSelect('CASH')}
+                      className="flex flex-col items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all"
+                    >
+                      <div className="text-2xl mb-2">💵</div>
+                      <span className="text-sm font-semibold text-gray-700">CASH</span>
+                    </button>
+                    <button
+                      onClick={() => handlePaymentMethodSelect('ONLINE')}
+                      disabled={!paymentQRCode}
+                      className={`flex flex-col items-center justify-center p-4 border-2 rounded-lg transition-all ${
+                        paymentQRCode
+                          ? 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
+                          : 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">📱</div>
+                      <span className="text-sm font-semibold text-gray-700">ONLINE</span>
+                    </button>
+                  </div>
+                  {!paymentQRCode && (
+                    <p className="text-xs text-gray-500 text-center mt-2">Online payment not available</p>
+                  )}
+                </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={closeModal}
+                  className="w-full py-2.5 px-4 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </>
+            )}
+
+            {/* Step 2: Online Payment (QR Code) */}
+            {showPaymentStep && selectedPaymentMethod === 'ONLINE' && paymentQRCode && (
+              <>
+                {/* Back Button */}
+                <button
+                  onClick={() => {
+                    setShowPaymentStep(false)
+                    setSelectedPaymentMethod(null)
+                  }}
+                  className="mb-4 text-gray-600 hover:text-gray-800 flex items-center gap-2 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back
+                </button>
+
+                {/* QR Code Section */}
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Scan to Pay Online</h3>
+                  <div className="flex justify-center mb-3">
+                    <div className="relative w-64 h-64 border-2 border-gray-200 rounded-lg overflow-hidden bg-white">
+                      <Image
+                        src={paymentQRCode}
+                        alt="Payment QR Code"
+                        fill
+                        className="object-contain p-2"
+                      />
                     </div>
-                    <p className="text-xs text-gray-500 mb-3 text-center">
-                      Amount: ₹{generatedBill.totalAmount.toFixed(2)}
-                    </p>
-                    {generatedBill.paymentStatus !== 'PAID' && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/billing/payment', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                billId: generatedBill.id,
-                                paymentMethod: 'ONLINE',
-                              }),
-                            })
-                            if (response.ok) {
-                              showSuccess('Payment marked as received!')
-                              // Update bill status
-                              setGeneratedBill({ ...generatedBill, paymentStatus: 'PAID' })
-                            } else {
-                              showError('Failed to update payment status')
-                            }
-                          } catch (error) {
-                            showError('Failed to update payment status')
-                          }
-                        }}
-                        className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                      >
-                        Mark as Paid
-                      </button>
-                    )}
-                    {generatedBill.paymentStatus === 'PAID' && (
-                      <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium text-center">
-                        ✓ Payment Received
-                      </div>
-                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Amount: <span className="font-semibold text-gray-900">₹{generatedBill.totalAmount.toFixed(2)}</span>
+                  </p>
+                  
+                  {generatedBill.paymentStatus !== 'PAID' && (
+                    <button
+                      onClick={handleMarkAsPaid}
+                      className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                    >
+                      ✓ Mark as Paid
+                    </button>
+                  )}
+                  {generatedBill.paymentStatus === 'PAID' && (
+                    <div className="w-full px-4 py-3 bg-green-100 text-green-700 rounded-lg font-medium text-center">
+                      ✓ Payment Received
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={handlePrintPDF}
+                    className="flex items-center justify-center gap-1.5 bg-primary-500 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-primary-600 transition-colors text-sm"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print
+                  </button>
+                  
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex items-center justify-center gap-1.5 bg-green-500 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-green-600 transition-colors text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    PDF
+                  </button>
+
+                  <button
+                    onClick={closeModal}
+                    className="py-2.5 px-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Final Step: Action Buttons (after payment method selected or payment marked) */}
+            {selectedPaymentMethod && !showPaymentStep && (
+              <>
+                {/* Success Icon and Title */}
+                <div className="text-center mb-6">
+                  <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-green-100 mb-3">
+                    <svg className="h-7 w-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    Bill Created Successfully!
+                  </h3>
+                </div>
+
+                {/* Bill Details */}
+                <div className="bg-gray-50 rounded-lg p-5 mb-6">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Bill Number</p>
+                      <p className="text-lg font-semibold text-gray-900">#{generatedBill.billNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Customer</p>
+                      <p className="text-lg font-semibold text-gray-900">{generatedBill.customerName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                      <p className="text-2xl font-bold text-primary-600">₹{generatedBill.totalAmount.toFixed(2)}</p>
+                    </div>
+                    <div className="pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Payment Method</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {selectedPaymentMethod === 'CASH' ? '💵 Cash' : '📱 Online'}
+                        {generatedBill.paymentStatus === 'PAID' && ' - ✓ Paid'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Action Buttons - Full Width at Bottom */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                onClick={handlePrintPDF}
-                className="flex items-center justify-center gap-2 bg-primary-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-600 transition-colors"
-              >
-                <Printer className="w-5 h-5" />
-                Print Bill
-              </button>
-              
-              <button
-                onClick={handleDownloadPDF}
-                className="flex items-center justify-center gap-2 bg-green-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-600 transition-colors"
-              >
-                <Download className="w-5 h-5" />
-                Download PDF
-              </button>
+                {/* Action Buttons */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={handlePrintPDF}
+                    className="flex items-center justify-center gap-1.5 bg-primary-500 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-primary-600 transition-colors text-sm"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print
+                  </button>
+                  
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex items-center justify-center gap-1.5 bg-green-500 text-white py-2.5 px-3 rounded-lg font-medium hover:bg-green-600 transition-colors text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    PDF
+                  </button>
 
-              <button
-                onClick={closeModal}
-                className="py-3 px-4 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+                  <button
+                    onClick={closeModal}
+                    className="py-2.5 px-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
