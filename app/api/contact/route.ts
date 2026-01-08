@@ -1,18 +1,34 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { sendContactFormNotification } from '@/lib/email';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { name, email, subject, message } = await req.json();
 
-    // In a real application, you would send an email here (e.g., using Resend, SendGrid, etc.)
-    console.log('Contact Form Submission:', { name, email, subject, message });
+    if (!name || !email || !subject || !message) {
+      return NextResponse.json(
+        { error: 'All fields are required' },
+        { status: 400 }
+      );
+    }
 
-    // Simulate delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Send notification email to admin
+    try {
+      await sendContactFormNotification(name, email, subject, message);
+    } catch (emailError) {
+      console.error('Failed to send contact form notification:', emailError);
+      // Don't fail the request if email fails, but log it
+    }
 
-    return NextResponse.json({ message: 'Message sent successfully' });
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true,
+      message: 'Message sent successfully. We will get back to you soon!' 
+    });
+  } catch (error: any) {
     console.error('Contact API Error:', error);
-    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Failed to send message' },
+      { status: 500 }
+    );
   }
 }

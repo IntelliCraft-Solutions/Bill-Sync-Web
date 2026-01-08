@@ -11,10 +11,9 @@ import {
   BarChart3, 
   LogOut,
   Receipt,
-  Menu,
-  X,
   Settings,
-  CreditCard
+  CreditCard,
+  X
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -51,18 +50,36 @@ export default function Sidebar({ role, businessName }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile menu button */}
+      {/* Mobile menu button with animated hamburger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 text-gray-700 hover:text-primary-600 active:text-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg bg-white/90 backdrop-blur-sm shadow-md hover:shadow-lg"
+        aria-label="Toggle menu"
+        aria-expanded={isOpen}
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        <div className="w-6 h-5 flex flex-col justify-center gap-1.5 relative">
+          <span
+            className={`block h-0.5 w-6 bg-current transition-all duration-300 ease-in-out origin-center ${
+              isOpen ? 'rotate-45 translate-y-2' : ''
+            }`}
+          />
+          <span
+            className={`block h-0.5 w-6 bg-current transition-all duration-300 ease-in-out ${
+              isOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'
+            }`}
+          />
+          <span
+            className={`block h-0.5 w-6 bg-current transition-all duration-300 ease-in-out origin-center ${
+              isOpen ? '-rotate-45 -translate-y-2' : ''
+            }`}
+          />
+        </div>
       </button>
 
       {/* Overlay */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -75,9 +92,23 @@ export default function Sidebar({ role, businessName }: SidebarProps) {
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-6 border-b border-gray-800">
-            <h1 className="text-xl font-bold">{businessName || 'Billing System'}</h1>
-            <p className="text-sm text-gray-400 mt-1">{role}</p>
+          <div className="p-4 sm:p-6 border-b border-gray-800">
+            {/* Close button for mobile - at the top */}
+            <div className="lg:hidden mb-4">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Business name and role - below the close button on mobile */}
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold break-words">{businessName || 'Billing System'}</h1>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">{role}</p>
+            </div>
           </div>
 
           {/* Navigation */}

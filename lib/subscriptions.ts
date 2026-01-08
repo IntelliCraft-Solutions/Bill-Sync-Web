@@ -8,21 +8,28 @@ export async function getAdminSubscription(adminId: string) {
 }
 
 export async function createInitialSubscription(adminId: string) {
-  const standardPlan = await prisma.subscriptionPlan.findFirst({
-    where: { name: 'STANDARD' }
+  // Try FREE_TRIAL first, fallback to STANDARD for backward compatibility
+  let freeTrialPlan = await prisma.subscriptionPlan.findFirst({
+    where: { name: 'FREE_TRIAL' }
   });
 
-  if (!standardPlan) {
-    throw new Error('Standard plan not found. Please seed the database.');
+  if (!freeTrialPlan) {
+    freeTrialPlan = await prisma.subscriptionPlan.findFirst({
+      where: { name: 'STANDARD', price: 0 }
+    });
+  }
+
+  if (!freeTrialPlan) {
+    throw new Error('Free Trial plan not found. Please seed the database.');
   }
 
   return await prisma.subscription.create({
     data: {
       adminId,
-      planId: standardPlan.id,
+      planId: freeTrialPlan.id,
       status: 'ACTIVE',
       startDate: new Date(),
-      isTrial: false, // Standard is free forever
+      isTrial: false, // Free Trial is free forever
     }
   });
 }

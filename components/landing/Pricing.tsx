@@ -7,23 +7,23 @@ import { Check, Zap } from 'lucide-react';
 export function Pricing() {
     const plans = [
       {
-        name: 'Standard',
+        name: 'Free Trial',
         price: '0',
         description: 'Perfect for small shops starting their digital journey.',
         features: [
-          'Up to 20 products',
-          'Up to 10 bills/month',
+          'Up to 10 products',
+          'Up to 15 bills/month',
           '1 admin account',
           '3 cashier accounts',
           'Basic sales reports',
           'Email support'
         ],
         cta: 'Start Free Trial',
-        href: '/auth/register?plan=STANDARD',
+        href: '/auth/register?plan=FREE_TRIAL',
         popular: false
       },
       {
-        name: 'Professional',
+        name: 'Standard',
         price: '1,499',
         description: 'Advanced tools for growing retail businesses.',
         features: [
@@ -37,15 +37,15 @@ export function Pricing() {
           '1GB cloud storage'
         ],
         cta: 'Get Started',
-        href: '/auth/register?plan=PROFESSIONAL',
+        href: '/auth/register?plan=STANDARD',
         popular: true
       },
       {
-        name: 'Premium',
+        name: 'Professional',
         price: '2,999',
         description: 'Enterprise features for large scale operations.',
         features: [
-          'Everything in Professional',
+          'Everything in Standard',
           'Unlimited admin accounts',
           'Unlimited cashier accounts',
           'API access',
@@ -55,7 +55,7 @@ export function Pricing() {
           '10GB cloud storage'
         ],
         cta: 'Get Started',
-        href: '/auth/register?plan=PREMIUM',
+        href: '/auth/register?plan=PROFESSIONAL',
         popular: false
       }
     ];
@@ -115,9 +115,6 @@ export function Pricing() {
                   <span className="text-4xl font-bold text-white">₹{plan.price}</span>
                   <span className="text-gray-400">/month</span>
                 </div>
-                {plan.price !== '0' && (
-                  <p className="text-xs text-purple-400 mt-1 font-medium italic">Billed annually</p>
-                )}
               </div>
 
               <div className="space-y-4 mb-10 flex-grow">

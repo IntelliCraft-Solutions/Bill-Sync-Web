@@ -14,9 +14,9 @@ import { Footer } from './Footer';
 
 export function LandingPage() {
   return (
-    <div className="bg-[#0a0a0f] text-white selection:bg-purple-500/30">
+    <div className="bg-[#0a0a0f] text-white selection:bg-purple-500/30 overflow-x-hidden">
       <Navbar />
-      <main>
+      <main className="overflow-x-hidden">
         <Hero />
         <BrandLogos />
         <Demo />

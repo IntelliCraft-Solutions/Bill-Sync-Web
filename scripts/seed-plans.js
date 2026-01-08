@@ -4,29 +4,29 @@ const prisma = new PrismaClient();
 async function main() {
   const plans = [
     {
-      name: 'STANDARD',
-      displayName: 'Standard',
+      name: 'FREE_TRIAL',
+      displayName: 'Free Trial',
       price: 0,
       currency: 'INR',
       features: [
-        'Up to 50 products',
-        'Up to 100 bills/month',
+        'Up to 10 products',
+        'Up to 15 bills/month',
         '1 admin account',
         '3 cashier accounts',
         'Basic reports',
         'Email support'
       ],
       limits: {
-        products: 50,
-        billsPerMonth: 100,
+        products: 10,
+        billsPerMonth: 15,
         adminAccounts: 1,
         cashierAccounts: 3,
         storageMB: 100
       }
     },
     {
-      name: 'PROFESSIONAL',
-      displayName: 'Professional',
+      name: 'STANDARD',
+      displayName: 'Standard',
       price: 1499,
       currency: 'INR',
       features: [
@@ -48,12 +48,12 @@ async function main() {
       }
     },
     {
-      name: 'PREMIUM',
-      displayName: 'Premium',
+      name: 'PROFESSIONAL',
+      displayName: 'Professional',
       price: 2999,
       currency: 'INR',
       features: [
-        'Everything in Professional',
+        'Everything in Standard',
         'Unlimited admin accounts',
         'Unlimited cashier accounts',
         'API access',

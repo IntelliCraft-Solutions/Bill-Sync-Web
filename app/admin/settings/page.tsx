@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { Save, Upload, Loader2 } from 'lucide-react'
+import { Save, Upload, Loader2, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
+import { useToast } from '@/components/ToastProvider'
+import { maskText, validateUPI, validatePhoneNumber } from '@/lib/encryption'
 
 interface StoreDetailsForm {
   storeName: string
@@ -14,9 +16,16 @@ interface StoreDetailsForm {
   website: string
   footerText: string
   logo: string
+  upiId: string
+  qrCodeImage: string
+  gpayNumber: string
+  phonePayNumber: string
+  razorpayId: string
+  otherPayment: string
 }
 
 export default function SettingsPage() {
+  const { showSuccess, showError } = useToast()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [adminEmail, setAdminEmail] = useState('')
@@ -28,8 +37,15 @@ export default function SettingsPage() {
     gstNumber: '',
     website: '',
     footerText: 'Thank you for shopping!',
-    logo: ''
+    logo: '',
+    upiId: '',
+    qrCodeImage: '',
+    gpayNumber: '',
+    phonePayNumber: '',
+    razorpayId: '',
+    otherPayment: ''
   })
+  const [showPaymentFields, setShowPaymentFields] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetchStoreDetails()
@@ -62,7 +78,13 @@ export default function SettingsPage() {
             gstNumber: data.storeDetails.gstNumber || '',
             website: data.storeDetails.website || '',
             footerText: data.storeDetails.footerText || 'Thank you for shopping!',
-            logo: data.storeDetails.logo || ''
+            logo: data.storeDetails.logo || '',
+            upiId: data.storeDetails.upiId || '',
+            qrCodeImage: data.storeDetails.qrCodeImage || '',
+            gpayNumber: data.storeDetails.gpayNumber || '',
+            phonePayNumber: data.storeDetails.phonePayNumber || '',
+            razorpayId: data.storeDetails.razorpayId || '',
+            otherPayment: data.storeDetails.otherPayment || ''
           })
         }
       }
@@ -106,12 +128,12 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json()
         setFormData(prev => ({ ...prev, logo: data.url }))
-        alert('Logo uploaded successfully')
+        showSuccess('Logo uploaded successfully')
       } else {
         throw new Error('Upload failed')
       }
     } catch (error) {
-      alert('Failed to upload logo')
+      showError('Failed to upload logo')
     } finally {
       setUploading(false)
     }
@@ -122,13 +144,30 @@ export default function SettingsPage() {
     
     // Validate phone number
     if (formData.phone && formData.phone.length !== 10) {
-      alert('Phone number must be exactly 10 digits')
+      showError('Phone number must be exactly 10 digits')
       return
     }
     
     // Validate GST number
     if (formData.gstNumber && formData.gstNumber.length !== 15) {
-      alert('GST number must be exactly 15 characters')
+      showError('GST number must be exactly 15 characters')
+      return
+    }
+    
+    // Validate UPI ID if provided
+    if (formData.upiId && !validateUPI(formData.upiId)) {
+      showError('Invalid UPI ID format. Example: yourname@paytm')
+      return
+    }
+    
+    // Validate phone numbers if provided
+    if (formData.gpayNumber && !validatePhoneNumber(formData.gpayNumber)) {
+      showError('Invalid GPay number. Must be a valid 10-digit Indian phone number')
+      return
+    }
+    
+    if (formData.phonePayNumber && !validatePhoneNumber(formData.phonePayNumber)) {
+      showError('Invalid PhonePay number. Must be a valid 10-digit Indian phone number')
       return
     }
     
@@ -142,12 +181,12 @@ export default function SettingsPage() {
       })
 
       if (response.ok) {
-        alert('Store details updated successfully')
+        showSuccess('Store details updated successfully')
       } else {
         throw new Error('Update failed')
       }
     } catch (error) {
-      alert('Failed to update store details')
+      showError('Failed to update store details')
     } finally {
       setLoading(false)
     }
@@ -157,7 +196,7 @@ export default function SettingsPage() {
     <DashboardLayout role="ADMIN">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Store Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Store Settings</h1>
           <p className="text-gray-600 mt-2">
             Manage your store information that appears on bills and invoices
           </p>
@@ -335,6 +374,220 @@ export default function SettingsPage() {
               <p className="text-sm text-gray-500 mt-1">
                 This text will appear at the bottom of all bills
               </p>
+            </div>
+          </div>
+
+          {/* Payment Methods Section */}
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods (Optional)</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Add your payment details to enable online payments. All information is encrypted and securely stored.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* UPI ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  UPI ID
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPaymentFields.upiId ? 'text' : 'password'}
+                    value={formData.upiId}
+                    onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
+                    placeholder="yourname@paytm"
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  {formData.upiId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentFields({ ...showPaymentFields, upiId: !showPaymentFields.upiId })}
+                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPaymentFields.upiId ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Format: yourname@paytm, yourname@ybl, etc.</p>
+              </div>
+
+              {/* QR Code Image Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  QR Code Image (Optional)
+                </label>
+                <div className="flex items-center gap-4">
+                  {formData.qrCodeImage && (
+                    <div className="relative h-24 w-24 rounded-lg border-2 border-gray-200 overflow-hidden">
+                      <Image
+                        src={formData.qrCodeImage}
+                        alt="QR Code"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      id="qrCode"
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setUploading(true)
+                        const uploadFormData = new FormData()
+                        uploadFormData.append('file', file)
+                        try {
+                          const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: uploadFormData
+                          })
+                          if (response.ok) {
+                            const data = await response.json()
+                            setFormData(prev => ({ ...prev, qrCodeImage: data.url }))
+                            showSuccess('QR code uploaded successfully')
+                          }
+                        } catch (error) {
+                          showError('Failed to upload QR code')
+                        } finally {
+                          setUploading(false)
+                        }
+                      }}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('qrCode')?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          Upload QR Code
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* GPay Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  GPay Number
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPaymentFields.gpayNumber ? 'text' : 'password'}
+                    value={formData.gpayNumber}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '')
+                      if (digits.length <= 10) {
+                        setFormData({ ...formData, gpayNumber: digits })
+                      }
+                    }}
+                    placeholder="10-digit phone number"
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  {formData.gpayNumber && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentFields({ ...showPaymentFields, gpayNumber: !showPaymentFields.gpayNumber })}
+                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPaymentFields.gpayNumber ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* PhonePay Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PhonePay Number
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPaymentFields.phonePayNumber ? 'text' : 'password'}
+                    value={formData.phonePayNumber}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '')
+                      if (digits.length <= 10) {
+                        setFormData({ ...formData, phonePayNumber: digits })
+                      }
+                    }}
+                    placeholder="10-digit phone number"
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  {formData.phonePayNumber && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentFields({ ...showPaymentFields, phonePayNumber: !showPaymentFields.phonePayNumber })}
+                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPaymentFields.phonePayNumber ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Razorpay ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Razorpay Merchant ID
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPaymentFields.razorpayId ? 'text' : 'password'}
+                    value={formData.razorpayId}
+                    onChange={(e) => setFormData({ ...formData, razorpayId: e.target.value })}
+                    placeholder="Razorpay merchant ID"
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  {formData.razorpayId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentFields({ ...showPaymentFields, razorpayId: !showPaymentFields.razorpayId })}
+                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPaymentFields.razorpayId ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Other Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Other Payment Method
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPaymentFields.otherPayment ? 'text' : 'password'}
+                    value={formData.otherPayment}
+                    onChange={(e) => setFormData({ ...formData, otherPayment: e.target.value })}
+                    placeholder="Any other payment details"
+                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  {formData.otherPayment && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentFields({ ...showPaymentFields, otherPayment: !showPaymentFields.otherPayment })}
+                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPaymentFields.otherPayment ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

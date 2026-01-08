@@ -5,8 +5,10 @@ import DashboardLayout from '@/components/DashboardLayout'
 import { Download, FileText, Package, Receipt } from 'lucide-react'
 import { generateInventoryPDF, generateSalesReportPDF } from '@/lib/pdf-generator'
 import { generateInventoryCSV, generateSalesCSV, downloadCSV } from '@/lib/csv-generator'
+import { useToast } from '@/components/ToastProvider'
 
 export default function ReportsPage() {
+  const { showError } = useToast()
   const [loading, setLoading] = useState(false)
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -23,7 +25,7 @@ export default function ReportsPage() {
       doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`)
     } catch (error) {
       console.error('Failed to generate PDF:', error)
-      alert('Failed to generate report')
+      showError('Failed to generate report')
     } finally {
       setLoading(false)
     }
@@ -39,7 +41,7 @@ export default function ReportsPage() {
       downloadCSV(csv, `inventory-${new Date().toISOString().split('T')[0]}.csv`)
     } catch (error) {
       console.error('Failed to generate CSV:', error)
-      alert('Failed to generate report')
+      showError('Failed to generate report')
     } finally {
       setLoading(false)
     }
@@ -57,7 +59,7 @@ export default function ReportsPage() {
       doc.save(`sales-report-${dateRange.startDate}-to-${dateRange.endDate}.pdf`)
     } catch (error) {
       console.error('Failed to generate PDF:', error)
-      alert('Failed to generate report')
+      showError('Failed to generate report')
     } finally {
       setLoading(false)
     }
@@ -73,7 +75,7 @@ export default function ReportsPage() {
       downloadCSV(csv, `sales-${new Date().toISOString().split('T')[0]}.csv`)
     } catch (error) {
       console.error('Failed to generate CSV:', error)
-      alert('Failed to generate report')
+      showError('Failed to generate report')
     } finally {
       setLoading(false)
     }
@@ -82,7 +84,7 @@ export default function ReportsPage() {
   return (
     <DashboardLayout role="ADMIN">
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Reports & Export</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Reports & Export</h1>
 
         {/* Date Range Selector for Sales Reports */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">

@@ -42,7 +42,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { storeName, address, phone, email, gstNumber, website, footerText, logo } = body
+    const { 
+      storeName, 
+      address, 
+      phone, 
+      email, 
+      gstNumber, 
+      website, 
+      footerText, 
+      logo,
+      upiId,
+      qrCodeImage,
+      gpayNumber,
+      phonePayNumber,
+      razorpayId,
+      otherPayment
+    } = body
 
     if (!storeName) {
       return NextResponse.json(
@@ -63,6 +78,12 @@ export async function PUT(request: NextRequest) {
         website,
         footerText,
         logo,
+        upiId: upiId || null,
+        qrCodeImage: qrCodeImage || null,
+        gpayNumber: gpayNumber || null,
+        phonePayNumber: phonePayNumber || null,
+        razorpayId: razorpayId || null,
+        otherPayment: otherPayment || null,
       },
       create: {
         adminId: session.user.id,
@@ -74,6 +95,12 @@ export async function PUT(request: NextRequest) {
         website,
         footerText,
         logo,
+        upiId: upiId || null,
+        qrCodeImage: qrCodeImage || null,
+        gpayNumber: gpayNumber || null,
+        phonePayNumber: phonePayNumber || null,
+        razorpayId: razorpayId || null,
+        otherPayment: otherPayment || null,
       }
     })
 

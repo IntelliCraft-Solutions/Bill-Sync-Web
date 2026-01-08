@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { checkUsageLimit, incrementUsage } from '@/lib/usage-tracker'
+import { checkQuota } from '@/lib/usage-tracker'
 
 const billItemSchema = z.object({
   productId: z.string().optional(),
@@ -78,18 +78,51 @@ export async function POST(req: NextRequest) {
     }
 
     const adminId = session.user.adminId!;
+    const tenantId = (session.user as any).tenantId;
 
-    // Check usage limit
-    const usageCheck = await checkUsageLimit(adminId, 'BILLS');
-    if (usageCheck.exceeded) {
-      return NextResponse.json(
-        { error: usageCheck.message },
-        { status: 403 }
-      )
+    // Get tenant ID if not in session
+    let finalTenantId = tenantId;
+    if (!finalTenantId) {
+      const user = await prisma.user.findFirst({
+        where: { email: session.user.email! },
+        include: { tenant: true },
+      });
+      finalTenantId = user?.tenant?.id;
+    }
+
+    // Check usage limit (quota is checked and incremented in checkQuota)
+    if (finalTenantId) {
+      const quotaCheck = await checkQuota(finalTenantId, 'BILLS', 1);
+      if (!quotaCheck.allowed) {
+        return NextResponse.json(
+          { 
+            error: quotaCheck.error || 'Free plan limit reached. Upgrade to continue.',
+            usage: quotaCheck.usage,
+            limit: quotaCheck.limit,
+          },
+          { status: 403 }
+        )
+      }
     }
 
     const body = await req.json()
     const data = billSchema.parse(body)
+
+    // Validate store details before creating bill
+    const storeDetails = await prisma.storeDetails.findUnique({
+      where: { adminId }
+    })
+
+    if (!storeDetails || !storeDetails.storeName || !storeDetails.address || 
+        storeDetails.storeName.trim() === '' || storeDetails.address.trim() === '') {
+      return NextResponse.json(
+        { 
+          error: 'Store details incomplete',
+          message: 'Please ask the owner to fill all business details (Business Name and Address) first before creating bills.'
+        },
+        { status: 400 }
+      )
+    }
 
     // Start a transaction to ensure data consistency
     const bill = await prisma.$transaction(async (tx) => {
@@ -135,9 +168,7 @@ export async function POST(req: NextRequest) {
       return newBill
     })
 
-    // Increment usage
-    await incrementUsage(adminId, 'BILLS');
-
+    // Usage is already incremented in checkQuota above
     return NextResponse.json(bill)
   } catch (error) {
     if (error instanceof z.ZodError) {

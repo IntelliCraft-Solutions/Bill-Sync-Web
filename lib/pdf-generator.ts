@@ -6,6 +6,7 @@ interface BillData {
   customerName: string
   createdAt: Date
   totalAmount: number
+  paymentStatus?: string
   items: Array<{
     name: string
     quantity: number
@@ -147,7 +148,7 @@ export function generateBillPDF(bill: BillData) {
   yPos += 5
 
   // ============ TOTALS ============
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
   
   // Subtotal
@@ -155,11 +156,22 @@ export function generateBillPDF(bill: BillData) {
   doc.text(`₹ ${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
   yPos += 6
 
-  // Grand Total
-  doc.setFontSize(12)
+  // Grand Total (same font size as subtotal)
+  doc.setFontSize(9)
   doc.text('GRAND TOTAL:', 10, yPos)
   doc.text(`₹ ${bill.totalAmount.toFixed(2)}`, 70, yPos, { align: 'right' })
   yPos += 8
+
+  // Payment Status Stamp
+  if (bill.paymentStatus === 'PAID') {
+    yPos += 3
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(0, 128, 0) // Green color
+    doc.text('[PAID]', 40, yPos, { align: 'center' })
+    doc.setTextColor(0, 0, 0) // Reset to black
+    yPos += 5
+  }
 
   // Double line
   doc.setLineWidth(0.5)

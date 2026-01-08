@@ -7,11 +7,61 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Central schema - User authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  tenantId      String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenant        Tenant?
+}
+
+// Central schema - Tenant registry
+model Tenant {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  name             String    // Company or user name
+  slug             String    @unique
+  schemaName       String    @unique // e.g., tenant_5f2a...
+  plan             String    @default("free") // "free", "pro", "premium"
+  paid             Boolean   @default(false)
+  planActivatedAt  DateTime?
+  email            String
+  metadata         Json?     @default("{}")
+  logoPath         String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailOtps        EmailOTP[]
+  usageRecords     UsageRecord[]
+  payments         Payment[]
+}
+
+// OTP storage for email verification
+model EmailOTP {
+  id        String   @id @default(cuid())
+  tenantId  String
+  email     String
+  otp       String   // Hashed OTP
+  type      String   // "verification", "login"
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt  DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([email, type, used])
+  @@index([tenantId, expiresAt])
+}
+
+// Legacy Admin model (for backward compatibility during migration)
 model Admin {
   id              String           @id @default(cuid())
   businessName    String
   email           String           @unique
   password        String
+  tenantId        String?          // Link to tenant if migrated
   createdAt       DateTime         @default(now())
   bills           Bill[]
   billingAccounts BillingAccount[]
@@ -19,17 +69,20 @@ model Admin {
   storeDetails    StoreDetails?
   subscription    Subscription?
   usageRecords    UsageRecord[]
+  
+  @@index([tenantId])
 }
 
 model BillingAccount {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  role      String   @default("CASHIER")
-  adminId   String
-  createdAt DateTime @default(now())
-  bills     Bill[]
-  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  username   String   @unique
+  password   String
+  employeeId String?  @unique
+  role       String   @default("CASHIER")
+  adminId    String
+  createdAt  DateTime @default(now())
+  bills      Bill[]
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -54,9 +107,13 @@ model Bill {
   customerName     String
   billType         String
   totalAmount      Float
+  paymentStatus    String         @default("PENDING") // PENDING, PAID, FAILED
+  paymentMethod    String?        // UPI, GPay, PhonePay, Razorpay, Cash, etc.
+  paymentId        String?        // Transaction ID from payment gateway
   billingAccountId String
   adminId          String
   createdAt        DateTime       @default(now())
+  paidAt           DateTime?
   admin            Admin          @relation(fields: [adminId], references: [id], onDelete: Cascade)
   billingAccount   BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   items            BillItem[]
@@ -75,24 +132,30 @@ model BillItem {
 }
 
 model StoreDetails {
-  id         String   @id @default(cuid())
-  storeName  String
-  address    String?
-  phone      String?
-  email      String?
-  gstNumber  String?
-  website    String?
-  logo       String?
-  footerText String?  @default("Thank you for shopping!")
-  adminId    String   @unique
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  storeName       String
+  address         String?
+  phone           String?
+  email           String?
+  gstNumber       String?
+  website         String?
+  logo            String?
+  footerText      String?  @default("Thank you for shopping!")
+  upiId           String?  // Encrypted UPI ID
+  qrCodeImage     String?  // URL to QR code image
+  gpayNumber      String?  // Encrypted GPay number
+  phonePayNumber  String?  // Encrypted PhonePay number
+  razorpayId      String?  // Encrypted Razorpay ID
+  otherPayment    String?  // Encrypted other payment method
+  adminId         String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  admin           Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
 
 model SubscriptionPlan {
   id          String   @id @default(cuid())
-  name        String   // "STANDARD", "PROFESSIONAL", "PREMIUM"
+  name        String   // "FREE_TRIAL", "STANDARD", "PROFESSIONAL"
   displayName String   // "Standard", "Professional", "Premium"
   price       Float    // Monthly price in INR
   currency    String   @default("INR")
@@ -116,6 +179,7 @@ model Subscription {
   paymentMethod   String?  // "RAZORPAY", "STRIPE", etc.
   paymentId       String?  // External payment ID
   autoRenew       Boolean  @default(true)
+  downgradeDate   DateTime? // Date when downgraded to free plan (for 5-day grace period)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   admin           Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
@@ -126,9 +190,10 @@ model Subscription {
 
 model UsageRecord {
   id             String   @id @default(cuid())
-  adminId        String
-  subscriptionId String
-  metricType     String   // "PRODUCTS", "BILLS", "STORAGE", "USERS"
+  tenantId       String   // Central tracking per tenant
+  adminId        String?  // Legacy support
+  subscriptionId String?
+  metricType     String   // "PRODUCTS", "BILLS", "STORAGE", "USERS", "API_CALLS"
   currentValue   Int      @default(0)
   limitValue     Int      // Limit from plan
   period         String   @default("MONTHLY") // "MONTHLY", "YEARLY"
@@ -136,25 +201,37 @@ model UsageRecord {
   periodEnd      DateTime
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  admin          Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  admin          Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   
+  @@index([tenantId, metricType, periodStart])
   @@index([adminId, metricType, periodStart])
 }
 
 model Payment {
   id              String   @id @default(cuid())
-  subscriptionId  String
+  tenantId        String   // Central tracking
+  subscriptionId  String?
   amount          Float
   currency        String   @default("INR")
   status          String   // "PENDING", "SUCCESS", "FAILED", "REFUNDED"
-  paymentMethod   String
-  paymentId       String?  // External payment gateway ID
+  paymentMethod   String   @default("RAZORPAY")
+  paymentId       String?  // External payment gateway ID (razorpay_payment_id)
+  orderId         String?  // Razorpay order ID
   transactionId   String?  // Internal transaction ID
   receiptUrl      String?
+  razorpaySignature String? // For verification
+  refundRequested Boolean  @default(false) // If money deducted but payment failed/pending
+  refundStatus    String?  // "PENDING", "PROCESSED", "FAILED"
+  refundId        String?  // Razorpay refund ID
+  refundAmount    Float?   // Amount refunded
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   
+  @@index([tenantId, status])
   @@index([subscriptionId, status])
+  @@index([orderId])
 }

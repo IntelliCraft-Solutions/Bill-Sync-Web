@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Plus, Edit, Trash2, Search, AlertTriangle, Upload, Loader2, Package } from 'lucide-react'
 import Image from 'next/image'
+import { useToast } from '@/components/ToastProvider'
 
 interface Product {
   id: string
@@ -17,6 +18,7 @@ interface Product {
 }
 
 export default function InventoryPage() {
+  const { showSuccess, showError } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -77,13 +79,13 @@ export default function InventoryPage() {
       if (response.ok) {
         const data = await response.json()
         setFormData(prev => ({ ...prev, imageUrl: data.url }))
-        alert('Image uploaded successfully')
+        showSuccess('Image uploaded successfully')
       } else {
-        alert('Failed to upload image')
+        showError('Failed to upload image')
       }
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Failed to upload image')
+      showError('Failed to upload image')
     } finally {
       setUploading(false)
     }

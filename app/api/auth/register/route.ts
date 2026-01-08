@@ -1,90 +1,115 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { z } from 'zod'
-import { sendWelcomeEmail } from '@/lib/mail'
-
-const ALLOWED_DOMAINS = ['gmail.com', 'outlook.com', 'yahoo.com', 'hotmail.com', 'icloud.com', 'protonmail.com']
-
-const registerSchema = z.object({
-  businessName: z.string().min(1),
-  email: z.string().email().refine((email) => {
-    const domain = email.split('@')[1].toLowerCase()
-    return ALLOWED_DOMAINS.includes(domain)
-  }, {
-    message: 'Please use a valid personal email account (Gmail, Outlook, Yahoo, etc.)'
-  }),
-  password: z.string().min(6),
-})
+import { validateEmail } from '@/lib/email-validation'
+import { generateOTP, hashOTP, getOTPExpiry } from '@/lib/otp'
+import { sendOTPEmail } from '@/lib/email'
+import { createTenantSchema } from '@/lib/tenant-schema'
+import { randomUUID } from 'crypto'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { businessName, email, password } = registerSchema.parse(body)
+    const { email, name } = body
 
-    const existingAdmin = await prisma.admin.findUnique({
+    if (!email || !name) {
+      return NextResponse.json(
+        { error: 'Email and name are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format and deliverability
+    const emailValidation = await validateEmail(email)
+    if (!emailValidation.valid) {
+      return NextResponse.json(
+        { error: emailValidation.error || "The email isn't valid — please use a valid email address." },
+        { status: 400 }
+      )
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
       where: { email },
     })
 
-    if (existingAdmin) {
+    if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 400 }
       )
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // Generate tenant ID and schema name
+    const tenantId = randomUUID()
+    const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50)
 
-    const admin = await prisma.$transaction(async (tx) => {
-      const newAdmin = await tx.admin.create({
+    // Create user and tenant in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
         data: {
-          businessName,
           email,
-          password: hashedPassword,
-          storeDetails: {
-            create: {
-              storeName: businessName,
-            }
-          }
+          emailVerified: false,
         },
       })
 
-      const standardPlan = await tx.subscriptionPlan.findFirst({
-        where: { name: 'STANDARD' }
+      // Create tenant
+      const tenant = await tx.tenant.create({
+        data: {
+          id: tenantId,
+          userId: user.id,
+          name,
+          slug,
+          schemaName,
+          email,
+          plan: 'free',
+          paid: false,
+          metadata: {},
+        },
       })
 
-      if (standardPlan) {
-        await tx.subscription.create({
-          data: {
-            adminId: newAdmin.id,
-            planId: standardPlan.id,
-            status: 'ACTIVE',
-            startDate: new Date(),
-          }
-        })
-      }
+      // Link user to tenant
+      await tx.user.update({
+        where: { id: user.id },
+        data: { tenantId: tenant.id },
+      })
 
-      return newAdmin
+      return { user, tenant }
     })
 
-    // Send welcome email asynchronously
-    sendWelcomeEmail(email, businessName).catch(console.error)
+    // Generate and store OTP
+    const otp = generateOTP()
+    const hashedOTP = await hashOTP(otp)
+    const expiresAt = getOTPExpiry()
+
+    await prisma.emailOTP.create({
+      data: {
+        tenantId: result.tenant.id,
+        email,
+        otp: hashedOTP,
+        type: 'verification',
+        expiresAt,
+      },
+    })
+
+    // Send OTP email
+    try {
+      await sendOTPEmail(email, otp, 'verification')
+    } catch (emailError) {
+      console.error('Failed to send OTP email:', emailError)
+      // Don't fail registration if email fails, but log it
+    }
 
     return NextResponse.json({
-      id: admin.id,
-      businessName: admin.businessName,
-      email: admin.email,
-      message: 'Account created successfully! A welcome email has been sent.'
+      success: true,
+      message: 'Registration successful. Please check your email for verification code.',
+      tenantId: result.tenant.id,
     })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0].message },
-        { status: 400 }
-      )
-    }
+  } catch (error: any) {
+    console.error('Registration error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     )
   }

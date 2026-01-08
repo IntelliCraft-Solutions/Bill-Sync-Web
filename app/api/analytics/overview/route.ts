@@ -92,9 +92,13 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error('Analytics overview error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    // Return default structure even on error so frontend doesn't crash
+    return NextResponse.json({
+      daily: { revenue: 0, billCount: 0 },
+      monthly: { revenue: 0, billCount: 0 },
+      yearly: { revenue: 0, billCount: 0 },
+      lowStockProducts: [],
+      error: error instanceof Error ? error.message : 'Internal server error',
+    }, { status: 500 })
   }
 }

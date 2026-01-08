@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { Receipt, DollarSign, FileText } from 'lucide-react'
+import { Receipt, DollarSign, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
 interface Bill {
@@ -17,6 +17,8 @@ export default function CashierDashboard() {
   const [bills, setBills] = useState<Bill[]>([])
   const [stats, setStats] = useState({ todayCount: 0, todayRevenue: 0 })
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const billsPerPage = 5
 
   useEffect(() => {
     fetchBills()
@@ -26,7 +28,8 @@ export default function CashierDashboard() {
     try {
       const response = await fetch('/api/billing')
       const data = await response.json()
-      setBills(data.slice(0, 10))
+      // Bills are already sorted by createdAt desc from API
+      setBills(data)
       
       const today = new Date().toISOString().split('T')[0]
       const todayBills = data.filter((bill: Bill) => 
@@ -124,22 +127,28 @@ export default function CashierDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  bills.map((bill) => (
-                    <tr key={bill.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                        #{bill.billNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                        {bill.customerName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                        ₹{bill.totalAmount.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                        {new Date(bill.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))
+                  bills
+                    .slice((currentPage - 1) * billsPerPage, currentPage * billsPerPage)
+                    .map((bill) => (
+                      <tr key={bill.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          #{bill.billNumber}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                          {bill.customerName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-900">
+                          ₹{bill.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                          {new Date(bill.createdAt).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </td>
+                      </tr>
+                    ))
                 )}
               </tbody>
             </table>
@@ -151,22 +160,59 @@ export default function CashierDashboard() {
             ) : bills.length === 0 ? (
               <div className="p-6 text-center text-gray-500">No bills yet. Create your first bill!</div>
             ) : (
-              bills.map((bill) => (
-                <div key={bill.id} className="p-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="font-semibold text-gray-900">#{bill.billNumber}</p>
-                      <p className="text-sm text-gray-600">{bill.customerName}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">₹{bill.totalAmount.toFixed(2)}</p>
-                      <p className="text-sm text-gray-500">{new Date(bill.createdAt).toLocaleDateString()}</p>
+              bills
+                .slice((currentPage - 1) * billsPerPage, currentPage * billsPerPage)
+                .map((bill) => (
+                  <div key={bill.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-semibold text-gray-900">#{bill.billNumber}</p>
+                        <p className="text-sm text-gray-600">{bill.customerName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-gray-900">₹{bill.totalAmount.toFixed(2)}</p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(bill.createdAt).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))
             )}
           </div>
+          {/* Pagination */}
+          {bills.length > billsPerPage && (
+            <div className="p-4 sm:p-6 border-t border-gray-200 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Showing {(currentPage - 1) * billsPerPage + 1} to {Math.min(currentPage * billsPerPage, bills.length)} of {bills.length} bills
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm text-gray-700 px-3">
+                  Page {currentPage} of {Math.ceil(bills.length / billsPerPage)}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(bills.length / billsPerPage), prev + 1))}
+                  disabled={currentPage >= Math.ceil(bills.length / billsPerPage)}
+                  className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

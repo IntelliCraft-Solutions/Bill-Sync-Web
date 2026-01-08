@@ -6,16 +6,47 @@ import { Mail, Phone, MapPin, Send, Loader2 } from 'lucide-react';
 
 export function Contact() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus('loading');
+    setErrorMessage('');
     
-    // Simulate API call
-    setTimeout(() => {
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      subject: formData.get('subject') as string,
+      message: formData.get('message') as string,
+    };
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send message');
+      }
+
       setStatus('success');
       (e.target as HTMLFormElement).reset();
-    }, 2000);
+      
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setStatus('idle');
+      }, 5000);
+    } catch (error: any) {
+      setStatus('error');
+      setErrorMessage(error.message || 'Failed to send message. Please try again.');
+    }
   };
 
   return (
@@ -78,6 +109,7 @@ export function Contact() {
                   <label className="block text-sm font-medium text-gray-400 mb-2">Full Name</label>
                   <input
                     type="text"
+                    name="name"
                     required
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-all"
                     placeholder="John Doe"
@@ -87,6 +119,7 @@ export function Contact() {
                   <label className="block text-sm font-medium text-gray-400 mb-2">Email Address</label>
                   <input
                     type="email"
+                    name="email"
                     required
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-all"
                     placeholder="john@example.com"
@@ -98,6 +131,7 @@ export function Contact() {
                 <label className="block text-sm font-medium text-gray-400 mb-2">Subject</label>
                 <input
                   type="text"
+                  name="subject"
                   required
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-all"
                   placeholder="How can we help?"
@@ -107,12 +141,19 @@ export function Contact() {
               <div className="mb-8">
                 <label className="block text-sm font-medium text-gray-400 mb-2">Message</label>
                 <textarea
+                  name="message"
                   required
                   rows={4}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-all resize-none"
                   placeholder="Tell us more about your needs..."
                 />
               </div>
+
+              {status === 'error' && errorMessage && (
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+                  {errorMessage}
+                </div>
+              )}
 
               <button
                 type="submit"
